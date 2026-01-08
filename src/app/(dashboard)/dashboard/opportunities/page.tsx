@@ -95,7 +95,7 @@ export default async function OpportunitiesPage() {
                     </Card>
                 ) : (
                     <div className="grid gap-4">
-                        {opportunities.map((opp) => (
+                        {opportunities.map((opp: OpportunityItem) => (
                             <Link key={opp.id} href={`/dashboard/opportunities/${opp.id}`}>
                                 <Card className="hover:shadow-lg transition-shadow cursor-pointer">
                                     <CardContent className="p-4">

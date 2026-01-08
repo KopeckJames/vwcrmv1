@@ -80,7 +80,7 @@ export default async function ContactsPage() {
                     </Card>
                 ) : (
                     <div className="grid gap-4">
-                        {contacts.map((contact) => (
+                        {contacts.map((contact: ContactWithAccount) => (
                             <Link key={contact.id} href={`/dashboard/contacts/${contact.id}`}>
                                 <Card className="hover:shadow-lg transition-shadow cursor-pointer">
                                     <CardContent className="p-4">

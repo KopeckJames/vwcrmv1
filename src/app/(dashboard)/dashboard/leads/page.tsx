@@ -85,7 +85,7 @@ export default async function LeadsPage() {
                     </Card>
                 ) : (
                     <div className="grid gap-4">
-                        {leads.map((lead) => (
+                        {leads.map((lead: typeof leads[number]) => (
                             <Link key={lead.id} href={`/dashboard/leads/${lead.id}`}>
                                 <Card className="hover:shadow-lg transition-shadow cursor-pointer">
                                     <CardContent className="p-4">

@@ -102,7 +102,7 @@ export default async function TasksPage() {
                     </Card>
                 ) : (
                     <div className="space-y-3">
-                        {tasks.map((task) => {
+                        {tasks.map((task: TaskItem) => {
                             const config = statusConfig[task.status];
                             const Icon = config.icon;
                             const isOverdue = task.dueDate && new Date(task.dueDate) < new Date() && task.status !== "COMPLETED";

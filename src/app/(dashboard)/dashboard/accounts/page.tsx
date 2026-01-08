@@ -74,7 +74,7 @@ export default async function AccountsPage() {
                     </Card>
                 ) : (
                     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                        {accounts.map((account) => (
+                        {accounts.map((account: AccountWithCount) => (
                             <Link key={account.id} href={`/dashboard/accounts/${account.id}`}>
                                 <Card className="hover:shadow-lg transition-shadow cursor-pointer h-full">
                                     <CardContent className="p-4">
