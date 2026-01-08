@@ -99,7 +99,7 @@ export default async function DoorActivityPage() {
                     </Card>
                 ) : (
                     <div className="space-y-8">
-                        {Object.entries(groupedActivities).map(([date, dayActivities]) => (
+                        {(Object.entries(groupedActivities) as [string, typeof activities][]).map(([date, dayActivities]) => (
                             <div key={date}>
                                 <h3 className="text-sm font-medium text-slate-500 dark:text-slate-400 mb-3">
                                     {date}
