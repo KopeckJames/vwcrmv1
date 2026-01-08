@@ -367,6 +367,7 @@ export default function NewDoorActivityPage() {
                                                 <div className="flex flex-col gap-4">
                                                     {photoPreview ? (
                                                         <div className="relative aspect-video rounded-lg overflow-hidden border bg-slate-100 dark:bg-slate-800">
+                                                            {/* eslint-disable-next-line @next/next/no-img-element */}
                                                             <img
                                                                 src={photoPreview}
                                                                 alt="Preview"

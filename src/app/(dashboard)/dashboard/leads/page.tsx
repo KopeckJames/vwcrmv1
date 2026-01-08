@@ -7,7 +7,7 @@ import { LeadList } from "./lead-list";
 
 async function getLeads() {
     try {
-        return await prisma.lead.findMany({
+        const leads = await prisma.lead.findMany({
             include: {
                 assignedTo: {
                     select: { id: true, name: true, image: true },
@@ -16,7 +16,10 @@ async function getLeads() {
             orderBy: { createdAt: "desc" },
             take: 100,
         });
-    } catch {
+        console.log(`[LeadsPage] Fetched ${leads.length} leads`);
+        return leads;
+    } catch (error) {
+        console.error("[LeadsPage] Error fetching leads:", error);
         return [];
     }
 }

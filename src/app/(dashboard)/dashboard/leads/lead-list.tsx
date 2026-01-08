@@ -65,7 +65,7 @@ interface LeadListProps {
     initialLeads: Lead[];
 }
 
-export function LeadList({ initialLeads }: LeadListProps) {
+export function LeadList({ initialLeads = [] }: LeadListProps) {
     const router = useRouter();
     const [searchQuery, setSearchQuery] = useState("");
     const [statusFilter, setStatusFilter] = useState<string>("ALL");
@@ -109,8 +109,11 @@ export function LeadList({ initialLeads }: LeadListProps) {
     };
 
     const filteredLeads = useMemo(() => {
-        return initialLeads.filter((lead: Lead) => {
-            const nameMatch = `${lead.firstName} ${lead.lastName}`.toLowerCase().includes(searchQuery.toLowerCase());
+        const safeLeads = Array.isArray(initialLeads) ? initialLeads : [];
+        return safeLeads.filter((lead: Lead) => {
+            const firstName = lead.firstName || "";
+            const lastName = lead.lastName || "";
+            const nameMatch = `${firstName} ${lastName}`.toLowerCase().includes(searchQuery.toLowerCase());
             const emailMatch = lead.email?.toLowerCase().includes(searchQuery.toLowerCase()) || false;
             const companyMatch = lead.company?.toLowerCase().includes(searchQuery.toLowerCase()) || false;
 
@@ -255,12 +258,12 @@ export function LeadList({ initialLeads }: LeadListProps) {
                                 <div className="flex items-start justify-between">
                                     <div className="flex items-start gap-4">
                                         <Avatar
-                                            fallback={`${lead.firstName[0]}${lead.lastName[0]}`}
+                                            fallback={`${lead.firstName?.[0] || ""}${lead.lastName?.[0] || ""}` || "?"}
                                             className="h-12 w-12"
                                         />
                                         <div>
                                             <h3 className="font-semibold text-slate-900 dark:text-slate-100">
-                                                {lead.firstName} {lead.lastName}
+                                                {lead.firstName || "Unknown"} {lead.lastName || "Lead"}
                                             </h3>
                                             {lead.company && (
                                                 <div className="flex items-center gap-1 text-sm text-slate-500 dark:text-slate-400 mt-1">
@@ -291,11 +294,12 @@ export function LeadList({ initialLeads }: LeadListProps) {
                                         </div>
                                     </div>
                                     <div className="flex flex-col items-end gap-2">
-                                        <Badge variant={statusColors[lead.status] as any}>
-                                            {statusLabels[lead.status]}
+                                        <Badge variant={(statusColors[lead.status] || "default") as any}>
+                                            {statusLabels[lead.status] || lead.status}
                                         </Badge>
                                         {lead.photoUrl && (
                                             <div className="mt-1 w-16 h-12 rounded overflow-hidden border shadow-sm">
+                                                {/* eslint-disable-next-line @next/next/no-img-element */}
                                                 <img
                                                     src={lead.photoUrl}
                                                     alt="Photo"
