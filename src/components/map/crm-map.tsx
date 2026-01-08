@@ -28,6 +28,12 @@ const statusColors: Record<string, string> = {
     UNQUALIFIED: "#f59e0b",
     CONVERTED: "#059669",
     DEAD: "#ef4444",
+    // Activity outcomes
+    NO_ANSWER: "#94a3b8",
+    LEFT_MATERIALS: "#6366f1",
+    INTERESTED: "#06b6d4",
+    APPOINTMENT_SET: "#10b981",
+    // Fallbacks
     activity: "#6366f1",
     contact: "#06b6d4",
     account: "#f97316",

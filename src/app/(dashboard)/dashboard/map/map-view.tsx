@@ -69,6 +69,8 @@ interface DoorActivity {
     longitude: number;
     createdAt: Date | string;
     notes?: string | null;
+    leadId?: string | null;
+    contactId?: string | null;
 }
 
 interface MapViewProps {
@@ -91,6 +93,7 @@ interface MapMarker {
 }
 
 export function MapView({ data }: MapViewProps) {
+    const [leads, setLeads] = useState<Lead[]>(data.leads);
     const [filters, setFilters] = useState({
         leads: true,
         contacts: true,
@@ -104,10 +107,20 @@ export function MapView({ data }: MapViewProps) {
     const handleMarkerClick = (marker: MapMarker) => {
         if (marker.type === "lead") {
             const leadId = marker.id.replace("lead-", "");
-            const lead = data.leads.find((l) => l.id === leadId);
+            const lead = leads.find((l) => l.id === leadId);
             if (lead) {
                 setSelectedLead(lead);
                 setEditForm({ ...lead });
+            }
+        } else if (marker.type === "activity") {
+            const activityId = marker.id.replace("activity-", "");
+            const activity = data.doorActivities.find((a) => a.id === activityId);
+            if (activity?.leadId) {
+                const lead = leads.find((l) => l.id === activity.leadId);
+                if (lead) {
+                    setSelectedLead(lead);
+                    setEditForm({ ...lead });
+                }
             }
         }
     };
@@ -123,11 +136,8 @@ export function MapView({ data }: MapViewProps) {
             });
             if (res.ok) {
                 const updatedLead = await res.json();
-                // Update local data (ideally we should use a shared state or refetch)
-                const leadIndex = data.leads.findIndex((l) => l.id === updatedLead.id);
-                if (leadIndex !== -1) {
-                    data.leads[leadIndex] = { ...data.leads[leadIndex], ...updatedLead };
-                }
+                // Update local status with state to trigger map refresh
+                setLeads(prev => prev.map(l => l.id === updatedLead.id ? { ...l, ...updatedLead } : l));
                 setSelectedLead(null);
                 setEditForm(null);
             }
@@ -142,7 +152,7 @@ export function MapView({ data }: MapViewProps) {
         const result: MapMarker[] = [];
 
         if (filters.leads) {
-            data.leads.forEach((lead) => {
+            leads.forEach((lead) => {
                 if (lead.latitude && lead.longitude) {
                     result.push({
                         id: `lead-${lead.id}`,
@@ -202,7 +212,7 @@ export function MapView({ data }: MapViewProps) {
         }
 
         return result;
-    }, [data, filters]);
+    }, [data, leads, filters]);
 
     const stats = {
         leads: data.leads.length,

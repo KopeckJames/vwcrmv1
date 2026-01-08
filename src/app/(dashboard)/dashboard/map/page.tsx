@@ -65,6 +65,8 @@ async function getMapData() {
                     longitude: true,
                     createdAt: true,
                     notes: true,
+                    leadId: true,
+                    contactId: true,
                 },
                 orderBy: { createdAt: "desc" },
                 take: 500,
