@@ -12,7 +12,6 @@ import {
     CheckSquare,
     Calendar,
     Map,
-    Sparkles,
     Settings,
     LogOut,
     ChevronLeft,
@@ -41,7 +40,6 @@ const navigation = [
     { name: "Door Activity", href: "/dashboard/door-activity", icon: DoorOpen },
     { name: "Calendar", href: "/dashboard/calendar", icon: Calendar },
     { name: "Map", href: "/dashboard/map", icon: Map },
-    { name: "AI Assistant", href: "/dashboard/ai-assistant", icon: Sparkles },
 ];
 
 const bottomNavigation = [
