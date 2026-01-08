@@ -105,7 +105,7 @@ export default async function DoorActivityPage() {
                                     {date}
                                 </h3>
                                 <div className="space-y-3">
-                                    {dayActivities.map((activity) => {
+                                    {dayActivities.map((activity: typeof activities[number]) => {
                                         const config = outcomeConfig[activity.outcome];
                                         const Icon = config.icon;
                                         return (
