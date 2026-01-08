@@ -3,12 +3,12 @@ import { Header } from "@/components/dashboard/header";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Plus, MapPin, Clock, DoorOpen, Package, UserCheck, ThumbsUp, Calendar, XCircle, AlertCircle, Ban } from "lucide-react";
+import { Plus, MapPin, Clock, DoorOpen, Package, UserCheck, ThumbsUp, Calendar, XCircle, AlertCircle, Ban, type LucideIcon } from "lucide-react";
 import prisma from "@/lib/prisma";
 import { auth } from "@/lib/auth";
-import { formatDateTime } from "@/lib/utils";
 
-const outcomeConfig: Record<string, { label: string; icon: any; variant: "default" | "info" | "warning" | "success" | "danger" | "secondary" }> = {
+
+const outcomeConfig: Record<string, { label: string; icon: LucideIcon; variant: "default" | "info" | "warning" | "success" | "danger" | "secondary" }> = {
     NO_ANSWER: { label: "No Answer", icon: DoorOpen, variant: "default" },
     LEFT_MATERIALS: { label: "Left Materials", icon: Package, variant: "info" },
     SPOKE_WITH_RESIDENT: { label: "Spoke with Resident", icon: UserCheck, variant: "secondary" },
@@ -46,7 +46,7 @@ export default async function DoorActivityPage() {
     const activities = await getDoorActivities();
 
     // Group activities by date
-    const groupedActivities = activities.reduce((acc, activity) => {
+    const groupedActivities = activities.reduce((acc: Record<string, typeof activities>, activity) => {
         const date = new Date(activity.createdAt).toLocaleDateString("en-US", {
             weekday: "long",
             year: "numeric",
