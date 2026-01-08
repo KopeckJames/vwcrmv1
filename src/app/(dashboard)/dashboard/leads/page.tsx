@@ -55,12 +55,19 @@ export default async function LeadsPage() {
                             Manage your sales leads and track their progress
                         </p>
                     </div>
-                    <Link href="/dashboard/leads/new">
-                        <Button>
-                            <Plus className="h-4 w-4 mr-2" />
-                            Add Lead
-                        </Button>
-                    </Link>
+                    <div className="flex gap-3">
+                        <Link href="/dashboard/leads/import">
+                            <Button variant="outline">
+                                Import CSV
+                            </Button>
+                        </Link>
+                        <Link href="/dashboard/leads/new">
+                            <Button>
+                                <Plus className="h-4 w-4 mr-2" />
+                                Add Lead
+                            </Button>
+                        </Link>
+                    </div>
                 </div>
 
                 {leads.length === 0 ? (
