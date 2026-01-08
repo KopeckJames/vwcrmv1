@@ -18,8 +18,13 @@ async function getMapData() {
                     status: true,
                     latitude: true,
                     longitude: true,
+                    street: true,
                     city: true,
                     state: true,
+                    zipCode: true,
+                    email: true,
+                    phone: true,
+                    description: true,
                 },
             }),
             prisma.contact.findMany({

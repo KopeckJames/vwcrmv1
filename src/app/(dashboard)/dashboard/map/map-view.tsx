@@ -5,15 +5,89 @@ import { CRMMap } from "@/components/map/crm-map";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Target, Users, Building2, DoorOpen, Eye, EyeOff } from "lucide-react";
+import { Target, Users, Building2, DoorOpen, Eye, EyeOff, Save, Loader2 } from "lucide-react";
+import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+    DialogDescription,
+    DialogFooter,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select";
+
+interface Lead {
+    id: string;
+    firstName: string;
+    lastName: string;
+    company?: string | null;
+    status: string;
+    latitude: number | null;
+    longitude: number | null;
+    street?: string | null;
+    city?: string | null;
+    state?: string | null;
+    zipCode?: string | null;
+    email?: string | null;
+    phone?: string | null;
+    description?: string | null;
+}
+
+interface Contact {
+    id: string;
+    firstName: string;
+    lastName: string;
+    latitude: number | null;
+    longitude: number | null;
+    city?: string | null;
+    state?: string | null;
+}
+
+interface Account {
+    id: string;
+    name: string;
+    industry?: string | null;
+    latitude: number | null;
+    longitude: number | null;
+    billingCity?: string | null;
+    billingState?: string | null;
+}
+
+interface DoorActivity {
+    id: string;
+    outcome: string;
+    latitude: number;
+    longitude: number;
+    createdAt: Date | string;
+    notes?: string | null;
+}
 
 interface MapViewProps {
     data: {
-        leads: any[];
-        contacts: any[];
-        accounts: any[];
-        doorActivities: any[];
+        leads: Lead[];
+        contacts: Contact[];
+        accounts: Account[];
+        doorActivities: DoorActivity[];
     };
+}
+
+interface MapMarker {
+    id: string;
+    latitude: number;
+    longitude: number;
+    type: "lead" | "contact" | "account" | "activity";
+    status?: string;
+    title: string;
+    description?: string;
 }
 
 export function MapView({ data }: MapViewProps) {
@@ -23,9 +97,49 @@ export function MapView({ data }: MapViewProps) {
         accounts: true,
         activities: false,
     });
+    const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
+    const [isSaving, setIsSaving] = useState(false);
+    const [editForm, setEditForm] = useState<Lead | null>(null);
+
+    const handleMarkerClick = (marker: MapMarker) => {
+        if (marker.type === "lead") {
+            const leadId = marker.id.replace("lead-", "");
+            const lead = data.leads.find((l) => l.id === leadId);
+            if (lead) {
+                setSelectedLead(lead);
+                setEditForm({ ...lead });
+            }
+        }
+    };
+
+    const handleSave = async () => {
+        if (!editForm) return;
+        setIsSaving(true);
+        try {
+            const res = await fetch(`/api/leads/${editForm.id}`, {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(editForm),
+            });
+            if (res.ok) {
+                const updatedLead = await res.json();
+                // Update local data (ideally we should use a shared state or refetch)
+                const leadIndex = data.leads.findIndex((l) => l.id === updatedLead.id);
+                if (leadIndex !== -1) {
+                    data.leads[leadIndex] = { ...data.leads[leadIndex], ...updatedLead };
+                }
+                setSelectedLead(null);
+                setEditForm(null);
+            }
+        } catch (error) {
+            console.error("Failed to save lead:", error);
+        } finally {
+            setIsSaving(false);
+        }
+    };
 
     const markers = useMemo(() => {
-        const result: any[] = [];
+        const result: MapMarker[] = [];
 
         if (filters.leads) {
             data.leads.forEach((lead) => {
@@ -145,8 +259,139 @@ export function MapView({ data }: MapViewProps) {
             {/* Map */}
             <CRMMap
                 markers={markers}
+                onMarkerClick={handleMarkerClick}
                 className="w-full h-[calc(100vh-280px)] min-h-[400px]"
             />
+
+            {/* Lead Edit Dialog */}
+            <Dialog open={!!selectedLead} onOpenChange={(open) => !open && setSelectedLead(null)}>
+                <DialogContent className="max-w-2xl overflow-y-auto max-h-[90vh]">
+                    <DialogHeader>
+                        <DialogTitle>Edit Lead</DialogTitle>
+                        <DialogDescription>
+                            Update lead information for {editForm?.firstName} {editForm?.lastName}
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    {editForm && (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 py-4">
+                            <div className="space-y-2">
+                                <Label htmlFor="firstName">First Name</Label>
+                                <Input
+                                    id="firstName"
+                                    value={editForm.firstName || ""}
+                                    onChange={(e) => setEditForm({ ...editForm, firstName: e.target.value })}
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="lastName">Last Name</Label>
+                                <Input
+                                    id="lastName"
+                                    value={editForm.lastName || ""}
+                                    onChange={(e) => setEditForm({ ...editForm, lastName: e.target.value })}
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="email">Email</Label>
+                                <Input
+                                    id="email"
+                                    type="email"
+                                    value={editForm.email || ""}
+                                    onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="phone">Phone</Label>
+                                <Input
+                                    id="phone"
+                                    type="tel"
+                                    value={editForm.phone || ""}
+                                    onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })}
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="company">Company</Label>
+                                <Input
+                                    id="company"
+                                    value={editForm.company || ""}
+                                    onChange={(e) => setEditForm({ ...editForm, company: e.target.value })}
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="status">Status</Label>
+                                <Select
+                                    value={editForm.status}
+                                    onValueChange={(value) => setEditForm({ ...editForm, status: value })}
+                                >
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Select status" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="NEW">New</SelectItem>
+                                        <SelectItem value="CONTACTED">Contacted</SelectItem>
+                                        <SelectItem value="QUALIFIED">Qualified</SelectItem>
+                                        <SelectItem value="UNQUALIFIED">Unqualified</SelectItem>
+                                        <SelectItem value="CONVERTED">Converted</SelectItem>
+                                        <SelectItem value="DEAD">Dead</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            <div className="md:col-span-2 space-y-2">
+                                <Label htmlFor="street">Street Address</Label>
+                                <Input
+                                    id="street"
+                                    value={editForm.street || ""}
+                                    onChange={(e) => setEditForm({ ...editForm, street: e.target.value })}
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="city">City</Label>
+                                <Input
+                                    id="city"
+                                    value={editForm.city || ""}
+                                    onChange={(e) => setEditForm({ ...editForm, city: e.target.value })}
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="state">State</Label>
+                                <Input
+                                    id="state"
+                                    value={editForm.state || ""}
+                                    onChange={(e) => setEditForm({ ...editForm, state: e.target.value })}
+                                />
+                            </div>
+                            <div className="md:col-span-2 space-y-2">
+                                <Label htmlFor="description">Notes</Label>
+                                <Textarea
+                                    id="description"
+                                    value={editForm.description || ""}
+                                    onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
+                                    rows={3}
+                                />
+                            </div>
+                        </div>
+                    )}
+
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setSelectedLead(null)}>
+                            Cancel
+                        </Button>
+                        <Button onClick={handleSave} disabled={isSaving}>
+                            {isSaving ? (
+                                <>
+                                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                    Saving...
+                                </>
+                            ) : (
+                                <>
+                                    <Save className="h-4 w-4 mr-2" />
+                                    Save Changes
+                                </>
+                            )}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
 
             {/* Legend */}
             <Card>
@@ -193,8 +438,8 @@ function FilterButton({
         <button
             onClick={onClick}
             className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border transition-all ${active
-                    ? colorClasses[color]
-                    : "bg-slate-100 text-slate-500 border-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700 opacity-60"
+                ? colorClasses[color]
+                : "bg-slate-100 text-slate-500 border-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700 opacity-60"
                 }`}
         >
             <Icon className="h-4 w-4" />
