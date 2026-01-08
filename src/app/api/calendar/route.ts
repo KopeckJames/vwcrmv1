@@ -3,14 +3,12 @@ import { auth } from "@/lib/auth";
 import {
     fetchGoogleCalendarEvents,
     createGoogleCalendarEvent,
-    updateGoogleCalendarEvent,
-    deleteGoogleCalendarEvent,
 } from "@/lib/google-calendar";
 import prisma from "@/lib/prisma";
 
 // GET /api/calendar - Fetch calendar events
 export async function GET(request: NextRequest) {
-    const session = await auth() as any;
+    const session = await auth() as { user?: { id: string }; accessToken?: string } | null;
     if (!session?.user) {
         return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
@@ -28,7 +26,7 @@ export async function GET(request: NextRequest) {
 
     try {
         // Fetch from Google Calendar if connected
-        let googleEvents: any[] = [];
+        let googleEvents: { id?: string; title: string; description?: string; location?: string; startTime: Date; endTime: Date }[] = [];
         if (session.accessToken) {
             try {
                 googleEvents = await fetchGoogleCalendarEvents(session.accessToken, startDate, endDate);
@@ -53,7 +51,7 @@ export async function GET(request: NextRequest) {
                 ...e,
                 provider: "GOOGLE",
             })),
-            ...localEvents.map((e) => ({
+            ...localEvents.map((e: typeof localEvents[number]) => ({
                 id: e.id,
                 title: e.title,
                 description: e.description,
@@ -73,7 +71,7 @@ export async function GET(request: NextRequest) {
 
 // POST /api/calendar - Create a calendar event
 export async function POST(request: NextRequest) {
-    const session = await auth() as any;
+    const session = await auth() as { user?: { id: string }; accessToken?: string } | null;
     if (!session?.user) {
         return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
