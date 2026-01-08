@@ -43,22 +43,13 @@
 - [x] Door activity listing page grouped by date
 - [x] Door activity logging form with geolocation capture
 
-## Map & Geolocation
-- [x] Create CRM Map component with Mapbox GL
-- [x] Map page with entity filters (leads, contacts, accounts, activities)
-- [x] Status-based marker colors and legend
-
-## Calendar Integration
-- [x] Google Calendar API integration library
-- [x] Calendar API routes with two-way sync
-- [x] Calendar page with week view and event creation
-
-## AI Features
-- [x] Gemini AI integration library with multiple functions
-- [x] AI API route for email drafts, lead scoring, meeting summaries
-- [x] AI Assistant page with action selection
+## Map & Geolocation Cleanup
+- [x] Remove Mapbox GL and all associated dependencies
+- [x] Switch reverse geocoding to Nominatim (OSM)
+- [x] Ensure CRM Map uses Leaflet with OSM tiles
 
 ## Build & Verification
-- [x] Fix TypeScript type issues across all pages
+- [ ] Verify address resolution with Nominatim
+- [ ] Fix TypeScript type issues across all pages
 - [x] Configure Prisma 7 with PostgreSQL adapter
-- [x] Verify production build succeeds
+- [ ] Verify production build succeeds

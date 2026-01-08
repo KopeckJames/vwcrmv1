@@ -77,7 +77,7 @@ The Prisma schema includes:
 - Automatic lead status updates based on outcomes
 
 #### 5. Map View
-- Mapbox GL JS integration
+- Leaflet integration with OpenStreetMap tiles
 - Filter by entity type (leads, contacts, accounts, activities)
 - Status-based color coding
 - Interactive markers with popups
@@ -104,7 +104,7 @@ The Prisma schema includes:
 | Auth | NextAuth.js v5 + Google OAuth |
 | Styling | Tailwind CSS |
 | UI Components | Radix UI primitives |
-| Maps | Mapbox GL JS |
+| Maps | Leaflet |
 | AI | Google Gemini 1.5 Flash |
 | Calendar | Google Calendar API |
 
@@ -133,7 +133,6 @@ Routes:
    GOOGLE_CLIENT_ID=<from Google Cloud Console>
    GOOGLE_CLIENT_SECRET=<from Google Cloud Console>
    GEMINI_API_KEY=<from Google AI Studio>
-   NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN=<from Mapbox>
    ```
 
 3. **Run database migration**:

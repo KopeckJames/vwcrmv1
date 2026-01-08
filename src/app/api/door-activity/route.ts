@@ -22,6 +22,10 @@ const doorActivitySchema = z.object({
     photoUrl: z.string().optional().nullable(),
     leadId: z.string().optional().nullable(),
     contactId: z.string().optional().nullable(),
+    street: z.string(),
+    city: z.string(),
+    state: z.string(),
+    zipCode: z.string(),
 });
 
 // GET /api/door-activity - List door activities
@@ -36,7 +40,7 @@ export async function GET(request: NextRequest) {
     const limit = parseInt(searchParams.get("limit") || "50");
     const date = searchParams.get("date"); // Format: YYYY-MM-DD
 
-    const where: any = {
+    const where: { userId: string; createdAt?: { gte: Date; lte: Date } } = {
         userId: session.user.id,
     };
 
@@ -91,10 +95,72 @@ export async function POST(request: NextRequest) {
         const body = await request.json();
         const validated = doorActivitySchema.parse(body);
 
+        const { street, city, state, zipCode, latitude, longitude, photoUrl, outcome, notes, leftMaterials, materialsType, contactId } = validated;
+
+        // 1. Find or create a lead based on address
+        let leadId = validated.leadId;
+
+        if (!leadId) {
+            const existingLead = await prisma.lead.findFirst({
+                where: {
+                    street: { equals: street, mode: 'insensitive' },
+                    zipCode: { equals: zipCode, mode: 'insensitive' },
+                },
+            });
+
+            if (existingLead) {
+                leadId = existingLead.id;
+                // Update existing lead with new info
+                await (prisma.lead as any).update({
+                    where: { id: leadId },
+                    data: {
+                        photoUrl: photoUrl || undefined,
+                        lastActivityAt: new Date(),
+                    },
+                });
+            } else {
+                // Create new lead
+                const newLead = await (prisma.lead as any).create({
+                    data: {
+                        firstName: "Unknown",
+                        lastName: "Resident",
+                        street,
+                        city,
+                        state,
+                        zipCode,
+                        latitude,
+                        longitude,
+                        photoUrl,
+                        status: outcome === "INTERESTED" ? "CONTACTED" : outcome === "APPOINTMENT_SET" ? "QUALIFIED" : "NEW",
+                        lastActivityAt: new Date(),
+                    },
+                });
+                leadId = newLead.id;
+            }
+        } else {
+            // Update existing lead if ID was provided
+            await (prisma.lead as any).update({
+                where: { id: leadId },
+                data: {
+                    photoUrl: photoUrl || undefined,
+                    lastActivityAt: new Date(),
+                },
+            });
+        }
+
+        // 2. Create the door activity
         const activity = await prisma.doorActivity.create({
             data: {
-                ...validated,
+                outcome,
+                notes,
+                leftMaterials,
+                materialsType,
+                latitude,
+                longitude,
+                photoUrl,
                 userId: session.user.id,
+                leadId,
+                contactId,
             },
             include: {
                 lead: {
@@ -106,20 +172,19 @@ export async function POST(request: NextRequest) {
             },
         });
 
-        // If this was linked to a lead and they were interested, update the lead status
-        if (validated.leadId && validated.outcome === "INTERESTED") {
-            await prisma.lead.update({
-                where: { id: validated.leadId },
-                data: { status: "CONTACTED" },
-            });
-        }
-
-        // If an appointment was set, update to qualified
-        if (validated.leadId && validated.outcome === "APPOINTMENT_SET") {
-            await prisma.lead.update({
-                where: { id: validated.leadId },
-                data: { status: "QUALIFIED" },
-            });
+        // 3. Update lead status based on outcome (redundant for new, but good for existing)
+        if (leadId) {
+            if (outcome === "INTERESTED") {
+                await prisma.lead.update({
+                    where: { id: leadId },
+                    data: { status: "CONTACTED" },
+                });
+            } else if (outcome === "APPOINTMENT_SET") {
+                await prisma.lead.update({
+                    where: { id: leadId },
+                    data: { status: "QUALIFIED" },
+                });
+            }
         }
 
         return NextResponse.json(activity, { status: 201 });

@@ -3,7 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { auth } from "@/lib/auth";
 import { Avatar } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { Key, Calendar, Map, Sparkles, ExternalLink } from "lucide-react";
+import { Key, Calendar, Sparkles, ExternalLink } from "lucide-react";
 
 export default async function SettingsPage() {
     const session = await auth();
@@ -51,12 +51,6 @@ export default async function SettingsPage() {
                                 connected={false}
                             />
                             <IntegrationItem
-                                icon={Map}
-                                title="Mapbox"
-                                description="Location and mapping services"
-                                connected={!!process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN}
-                            />
-                            <IntegrationItem
                                 icon={Sparkles}
                                 title="Gemini AI"
                                 description="AI-powered email drafts and insights"
@@ -83,7 +77,6 @@ export default async function SettingsPage() {
 GOOGLE_CLIENT_ID=your-google-client-id
 GOOGLE_CLIENT_SECRET=your-google-client-secret
 GEMINI_API_KEY=your-gemini-api-key
-NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN=your-mapbox-token
 DATABASE_URL=your-database-url`}
                                 </code>
                             </div>
@@ -102,7 +95,6 @@ DATABASE_URL=your-database-url`}
                             <ResourceLink href="https://console.cloud.google.com" label="Google Cloud Console" />
                             <ResourceLink href="https://portal.azure.com" label="Azure Portal" />
                             <ResourceLink href="https://aistudio.google.com/apikey" label="Gemini API Keys" />
-                            <ResourceLink href="https://account.mapbox.com" label="Mapbox Account" />
                         </CardContent>
                     </Card>
                 </div>

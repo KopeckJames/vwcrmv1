@@ -139,6 +139,15 @@ export default async function LeadsPage() {
                                                 <Badge variant={statusColors[lead.status]}>
                                                     {statusLabels[lead.status]}
                                                 </Badge>
+                                                {(lead as any).photoUrl && (
+                                                    <div className="mt-2 w-16 h-12 rounded overflow-hidden border">
+                                                        <img
+                                                            src={(lead as any).photoUrl}
+                                                            alt="Door Placement"
+                                                            className="w-full h-full object-cover"
+                                                        />
+                                                    </div>
+                                                )}
                                                 {lead.estimatedValue && (
                                                     <span className="text-sm font-medium text-slate-900 dark:text-slate-100">
                                                         ${lead.estimatedValue.toLocaleString()}

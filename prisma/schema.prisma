@@ -193,6 +193,9 @@ model Lead {
   tasks        Task[]
   doorActivities DoorActivity[]
   
+  photoUrl     String?
+  lastActivityAt DateTime? @default(now())
+  
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
@@ -200,6 +203,7 @@ model Lead {
   @@index([status])
   @@index([latitude, longitude])
   @@index([territoryId])
+  @@index([street, zipCode])
 }
 
 enum LeadStatus {
