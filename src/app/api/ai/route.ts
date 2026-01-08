@@ -10,6 +10,14 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    // Check for Gemini API key
+    if (!process.env.GEMINI_API_KEY) {
+        console.error("GEMINI_API_KEY is not configured");
+        return NextResponse.json({
+            error: "AI service not configured. Please add GEMINI_API_KEY to environment variables."
+        }, { status: 500 });
+    }
+
     try {
         const { action, params } = await request.json();
 
