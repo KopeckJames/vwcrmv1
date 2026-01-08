@@ -46,7 +46,7 @@ export default async function DoorActivityPage() {
     const activities = await getDoorActivities();
 
     // Group activities by date
-    const groupedActivities = activities.reduce((acc: Record<string, typeof activities>, activity) => {
+    const groupedActivities = activities.reduce((acc: Record<string, typeof activities>, activity: typeof activities[number]) => {
         const date = new Date(activity.createdAt).toLocaleDateString("en-US", {
             weekday: "long",
             year: "numeric",
