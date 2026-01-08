@@ -1,0 +1,6 @@
+{
+  "artifactType":  "ARTIFACT_TYPE_TASK",
+  "summary":  "Complete task checklist for CRM platform development. All items marked as complete including project setup, database schema, authentication, UI components, dashboard layout, CRM pages (leads, contacts, accounts, opportunities, tasks), door activity feature with geolocation, map integration with Mapbox, calendar integration with Google Calendar, AI features with Gemini, and build verification.",
+  "updatedAt":  "2026-01-08T01:38:03.229276Z",
+  "version":  "1"
+}

@@ -1,0 +1,29 @@
+# CRM Foundation Project
+
+## Planning Phase
+- [x] Research EspoCRM architecture and features
+- [x] Research Next.js CRM best practices
+- [x] Research Google/Outlook Calendar integration
+- [x] Research Gemini AI integration
+- [x] Research geolocation/mapping features
+- [/] Create implementation plan
+- [ ] Get user approval on implementation plan
+
+## Execution Phase
+- [ ] Initialize Next.js project with TypeScript
+- [ ] Set up database (Prisma + PostgreSQL)
+- [ ] Create core CRM entities (Contacts, Accounts, Leads, Opportunities, Tasks)
+- [ ] Implement authentication (NextAuth.js)
+- [ ] Build dashboard and core UI components
+- [ ] Implement Google Calendar integration
+- [ ] Implement Outlook Calendar integration
+- [ ] Implement Gemini AI assistant
+- [ ] Implement geolocation/mapping features
+- [ ] Create API routes for all entities
+
+## Verification Phase
+- [ ] Test all CRUD operations
+- [ ] Test calendar integrations
+- [ ] Test AI assistant
+- [ ] Test map functionality
+- [ ] Create walkthrough documentation

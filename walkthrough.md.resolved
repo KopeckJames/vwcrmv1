@@ -1,0 +1,1376 @@
+# Custom CRM Platform - Development Walkthrough
+
+## Overview
+
+This document summarizes the development of a custom CRM platform built with Next.js 15, TypeScript, and Tailwind CSS. The application includes comprehensive sales management features, AI integration, and advanced geolocation capabilities.
+
+## What Was Built
+
+### Core Application Structure
+
+The CRM is built using the Next.js App Router with the following structure:
+
+```
+my-crm/
+├── prisma/
+│   └── schema.prisma         # Complete database schema
+├── src/
+│   ├── app/
+│   │   ├── (auth)/login/     # Login page
+│   │   ├── (dashboard)/      # Protected dashboard routes
+│   │   │   └── dashboard/
+│   │   │       ├── leads/
+│   │   │       ├── contacts/
+│   │   │       ├── accounts/
+│   │   │       ├── opportunities/
+│   │   │       ├── tasks/
+│   │   │       ├── door-activity/
+│   │   │       ├── calendar/
+│   │   │       ├── map/
+│   │   │       ├── ai-assistant/
+│   │   │       └── settings/
+│   │   └── api/              # API routes
+│   ├── components/
+│   │   ├── ui/               # Reusable UI components
+│   │   ├── dashboard/        # Dashboard-specific components
+│   │   └── map/              # Map components
+│   └── lib/                  # Utilities and integrations
+```
+
+### Database Schema
+
+The Prisma schema includes:
+- **User/Account/Session/VerificationToken** - NextAuth.js authentication models
+- **Contact** - Individual people with address and geolocation
+- **CRMAccount** - Companies/Organizations
+- **Lead** - Potential customers with status tracking
+- **Opportunity** - Sales pipeline with stages
+- **Task** - Action items and follow-ups
+- **Activity** - Generic activity logging
+- **DoorActivity** - Door-to-door sales tracking with GPS
+- **CalendarEvent** - Synchronized calendar events
+- **Territory** - Sales territories with GeoJSON boundaries
+
+### Key Features Implemented
+
+#### 1. Authentication
+- Google OAuth via NextAuth.js v5
+- Calendar API scopes for Google Calendar integration
+- Protected dashboard routes
+
+#### 2. Dashboard
+- Real-time stats (leads, contacts, opportunities, pipeline value)
+- Quick action buttons
+- Collapsible sidebar navigation
+
+#### 3. CRM Entities
+- **Leads**: Full CRUD with status tracking (New → Contacted → Qualified → Converted)
+- **Contacts**: Associated with accounts, includes job title and address
+- **Accounts**: Company profiles with related contacts/opportunities counts
+- **Opportunities**: Sales pipeline with stages and probability tracking
+- **Tasks**: To-do items with priority levels and due dates
+
+#### 4. Door-to-Door Activity Logging
+- GPS location capture on each visit
+- Multiple outcome types (No Answer, Left Materials, Interested, etc.)
+- Material tracking (flyers, brochures, door hangers)
+- Automatic lead status updates based on outcomes
+
+#### 5. Map View
+- Mapbox GL JS integration
+- Filter by entity type (leads, contacts, accounts, activities)
+- Status-based color coding
+- Interactive markers with popups
+
+#### 6. Calendar Integration
+- Google Calendar API two-way sync
+- Week view with time slots
+- Event creation with sync option
+- Support for future Outlook integration
+
+#### 7. AI Assistant (Gemini)
+- Email draft generation with tone selection
+- Lead scoring with reasoning
+- Meeting notes summarization
+- CRM-context-aware Q&A
+
+### Technology Stack
+
+| Category | Technology |
+|----------|------------|
+| Framework | Next.js 16 (App Router) |
+| Language | TypeScript |
+| Database | PostgreSQL via Prisma 7 |
+| Auth | NextAuth.js v5 + Google OAuth |
+| Styling | Tailwind CSS |
+| UI Components | Radix UI primitives |
+| Maps | Mapbox GL JS |
+| AI | Google Gemini 1.5 Flash |
+| Calendar | Google Calendar API |
+
+## Build Verification
+
+The production build completed successfully:
+
+```
+✓ Compiled successfully
+✓ Generating static pages (22/22)
+
+Routes:
+○ /login (static)
+ƒ /dashboard/* (dynamic, protected)
+ƒ /api/* (dynamic endpoints)
+```
+
+## Next Steps for Deployment
+
+1. **Set up PostgreSQL database** (Vercel Postgres, Neon, or Supabase recommended)
+
+2. **Configure environment variables**:
+   ```
+   DATABASE_URL=postgresql://...
+   AUTH_SECRET=<generate with: openssl rand -base64 32>
+   GOOGLE_CLIENT_ID=<from Google Cloud Console>
+   GOOGLE_CLIENT_SECRET=<from Google Cloud Console>
+   GEMINI_API_KEY=<from Google AI Studio>
+   NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN=<from Mapbox>
+   ```
+
+3. **Run database migration**:
+   ```bash
+   npx prisma migrate dev --name init
+   ```
+
+4. **Deploy to Vercel**:
+   ```bash
+   vercel
+   ```
+
+## Files Created
+
+```diff:schema.prisma
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+===
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ============================================================================
+// Authentication Models (NextAuth.js)
+// ============================================================================
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String    @unique
+  emailVerified DateTime?
+  image         String?
+  role          String    @default("user")
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  accounts      Account[]
+  sessions      Session[]
+  
+  // CRM relations
+  assignedLeads       Lead[]        @relation("AssignedLeads")
+  assignedTasks       Task[]        @relation("AssignedTasks")
+  assignedOpportunities Opportunity[] @relation("AssignedOpportunities")
+  activities          Activity[]
+  doorActivities      DoorActivity[]
+}
+
+model Account {
+  id                       String  @id @default(cuid())
+  userId                   String
+  type                     String
+  provider                 String
+  providerAccountId        String
+  refresh_token            String? @db.Text
+  access_token             String? @db.Text
+  expires_at               Int?
+  token_type               String?
+  scope                    String?
+  id_token                 String? @db.Text
+  session_state            String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+// ============================================================================
+// CRM Core Entities
+// ============================================================================
+
+model Contact {
+  id          String   @id @default(cuid())
+  firstName   String
+  lastName    String
+  email       String?
+  phone       String?
+  mobile      String?
+  jobTitle    String?
+  department  String?
+  description String?  @db.Text
+  
+  // Address fields
+  street      String?
+  city        String?
+  state       String?
+  zipCode     String?
+  country     String?
+  
+  // Geolocation
+  latitude    Float?
+  longitude   Float?
+  
+  // Relations
+  accountId   String?
+  account     CRMAccount? @relation(fields: [accountId], references: [id])
+  
+  activities  Activity[]
+  tasks       Task[]
+  opportunities Opportunity[]
+  doorActivities DoorActivity[]
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([accountId])
+  @@index([email])
+  @@index([latitude, longitude])
+}
+
+model CRMAccount {
+  id          String   @id @default(cuid())
+  name        String
+  website     String?
+  industry    String?
+  description String?  @db.Text
+  phone       String?
+  annualRevenue Float?
+  employees   Int?
+  
+  // Billing Address
+  billingStreet   String?
+  billingCity     String?
+  billingState    String?
+  billingZipCode  String?
+  billingCountry  String?
+  
+  // Shipping Address
+  shippingStreet  String?
+  shippingCity    String?
+  shippingState   String?
+  shippingZipCode String?
+  shippingCountry String?
+  
+  // Geolocation (billing address)
+  latitude    Float?
+  longitude   Float?
+  
+  // Relations
+  contacts    Contact[]
+  opportunities Opportunity[]
+  activities  Activity[]
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([name])
+  @@index([latitude, longitude])
+}
+
+model Lead {
+  id          String   @id @default(cuid())
+  firstName   String
+  lastName    String
+  email       String?
+  phone       String?
+  mobile      String?
+  company     String?
+  jobTitle    String?
+  website     String?
+  description String?  @db.Text
+  
+  // Lead specific fields
+  status      LeadStatus @default(NEW)
+  source      String?
+  estimatedValue Float?
+  
+  // Address fields
+  street      String?
+  city        String?
+  state       String?
+  zipCode     String?
+  country     String?
+  
+  // Geolocation
+  latitude    Float?
+  longitude   Float?
+  
+  // Territory assignment
+  territoryId String?
+  territory   Territory? @relation(fields: [territoryId], references: [id])
+  
+  // Assignment
+  assignedToId String?
+  assignedTo   User?   @relation("AssignedLeads", fields: [assignedToId], references: [id])
+  
+  // Relations
+  activities   Activity[]
+  tasks        Task[]
+  doorActivities DoorActivity[]
+  
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([assignedToId])
+  @@index([status])
+  @@index([latitude, longitude])
+  @@index([territoryId])
+}
+
+enum LeadStatus {
+  NEW
+  CONTACTED
+  QUALIFIED
+  UNQUALIFIED
+  CONVERTED
+  DEAD
+}
+
+model Opportunity {
+  id          String   @id @default(cuid())
+  name        String
+  description String?  @db.Text
+  
+  // Opportunity specific fields
+  stage       OpportunityStage @default(PROSPECTING)
+  amount      Float?
+  probability Int?     @default(0)
+  expectedCloseDate DateTime?
+  
+  // Relations
+  accountId   String?
+  account     CRMAccount? @relation(fields: [accountId], references: [id])
+  
+  contactId   String?
+  contact     Contact? @relation(fields: [contactId], references: [id])
+  
+  assignedToId String?
+  assignedTo   User?   @relation("AssignedOpportunities", fields: [assignedToId], references: [id])
+  
+  activities  Activity[]
+  tasks       Task[]
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([accountId])
+  @@index([contactId])
+  @@index([assignedToId])
+  @@index([stage])
+}
+
+enum OpportunityStage {
+  PROSPECTING
+  QUALIFICATION
+  NEEDS_ANALYSIS
+  VALUE_PROPOSITION
+  NEGOTIATION
+  CLOSED_WON
+  CLOSED_LOST
+}
+
+model Task {
+  id          String   @id @default(cuid())
+  title       String
+  description String?  @db.Text
+  
+  status      TaskStatus @default(NOT_STARTED)
+  priority    TaskPriority @default(MEDIUM)
+  dueDate     DateTime?
+  completedAt DateTime?
+  
+  // Relations
+  assignedToId String?
+  assignedTo   User?   @relation("AssignedTasks", fields: [assignedToId], references: [id])
+  
+  contactId   String?
+  contact     Contact? @relation(fields: [contactId], references: [id])
+  
+  leadId      String?
+  lead        Lead?    @relation(fields: [leadId], references: [id])
+  
+  opportunityId String?
+  opportunity   Opportunity? @relation(fields: [opportunityId], references: [id])
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([assignedToId])
+  @@index([status])
+  @@index([dueDate])
+}
+
+enum TaskStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  COMPLETED
+  WAITING
+  DEFERRED
+}
+
+enum TaskPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+// ============================================================================
+// Activity Tracking
+// ============================================================================
+
+model Activity {
+  id          String   @id @default(cuid())
+  type        ActivityType
+  subject     String
+  description String?  @db.Text
+  dateTime    DateTime @default(now())
+  duration    Int?     // in minutes
+  
+  // Relations
+  userId      String
+  user        User     @relation(fields: [userId], references: [id])
+  
+  contactId   String?
+  contact     Contact? @relation(fields: [contactId], references: [id])
+  
+  leadId      String?
+  lead        Lead?    @relation(fields: [leadId], references: [id])
+  
+  accountId   String?
+  account     CRMAccount? @relation(fields: [accountId], references: [id])
+  
+  opportunityId String?
+  opportunity   Opportunity? @relation(fields: [opportunityId], references: [id])
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([userId])
+  @@index([type])
+  @@index([dateTime])
+}
+
+enum ActivityType {
+  CALL
+  EMAIL
+  MEETING
+  TASK
+  NOTE
+  DOOR_KNOCK
+}
+
+// ============================================================================
+// Door-to-Door Activity Logging
+// ============================================================================
+
+model DoorActivity {
+  id          String   @id @default(cuid())
+  
+  outcome     DoorOutcome
+  notes       String?  @db.Text
+  
+  // What was left/done
+  leftMaterials Boolean @default(false)
+  materialsType String? // e.g., "flyer", "brochure", "business card"
+  
+  // Location at time of activity
+  latitude    Float
+  longitude   Float
+  
+  // Photo of materials left (optional)
+  photoUrl    String?
+  
+  // Relations
+  userId      String
+  user        User     @relation(fields: [userId], references: [id])
+  
+  // Can be linked to a lead or contact
+  leadId      String?
+  lead        Lead?    @relation(fields: [leadId], references: [id])
+  
+  contactId   String?
+  contact     Contact? @relation(fields: [contactId], references: [id])
+  
+  createdAt   DateTime @default(now())
+
+  @@index([userId])
+  @@index([leadId])
+  @@index([contactId])
+  @@index([createdAt])
+  @@index([latitude, longitude])
+}
+
+enum DoorOutcome {
+  NO_ANSWER
+  LEFT_MATERIALS
+  SPOKE_WITH_RESIDENT
+  NOT_INTERESTED
+  INTERESTED
+  APPOINTMENT_SET
+  WRONG_ADDRESS
+  DO_NOT_CONTACT
+}
+
+// ============================================================================
+// Calendar Integration
+// ============================================================================
+
+model CalendarEvent {
+  id          String   @id @default(cuid())
+  
+  title       String
+  description String?  @db.Text
+  location    String?
+  
+  startTime   DateTime
+  endTime     DateTime
+  allDay      Boolean  @default(false)
+  
+  // External calendar sync
+  provider    CalendarProvider?
+  externalId  String?
+  syncedAt    DateTime?
+  
+  // Reminders
+  reminderMinutes Int[]
+  
+  // Attendees (stored as JSON for simplicity)
+  attendees   Json?
+  
+  userId      String
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([provider, externalId])
+  @@index([userId])
+  @@index([startTime, endTime])
+}
+
+enum CalendarProvider {
+  GOOGLE
+  OUTLOOK
+  LOCAL
+}
+
+// ============================================================================
+// Territory Management
+// ============================================================================
+
+model Territory {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  color       String?  // Hex color for map display
+  
+  // GeoJSON polygon boundary
+  boundary    Json?
+  
+  // Relations
+  leads       Lead[]
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([name])
+}
+```
+```diff:prisma.ts
+===
+import { PrismaClient } from "@prisma/client";
+import { PrismaPg } from "@prisma/adapter-pg";
+import { Pool } from "pg";
+
+const globalForPrisma = globalThis as unknown as {
+  prisma: PrismaClient | undefined;
+};
+
+function createPrismaClient() {
+  const connectionString = process.env.DATABASE_URL;
+  
+  if (!connectionString) {
+    throw new Error("DATABASE_URL environment variable is not set");
+  }
+
+  const pool = new Pool({ connectionString });
+  const adapter = new PrismaPg(pool);
+
+  return new PrismaClient({
+    adapter,
+    log: process.env.NODE_ENV === "development" ? ["query", "error", "warn"] : ["error"],
+  });
+}
+
+export const prisma = globalForPrisma.prisma ?? createPrismaClient();
+
+if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = prisma;
+
+export default prisma;
+
+```
+```diff:auth.ts
+===
+import NextAuth from "next-auth";
+import Google from "next-auth/providers/google";
+import { PrismaAdapter } from "@auth/prisma-adapter";
+import { prisma } from "./prisma";
+
+export const { handlers, signIn, signOut, auth } = NextAuth({
+  adapter: PrismaAdapter(prisma),
+  providers: [
+    Google({
+      clientId: process.env.GOOGLE_CLIENT_ID!,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+      authorization: {
+        params: {
+          access_type: "offline",
+          prompt: "consent",
+          scope: [
+            "openid",
+            "email",
+            "profile",
+            "https://www.googleapis.com/auth/calendar",
+            "https://www.googleapis.com/auth/calendar.events",
+          ].join(" "),
+        },
+      },
+    }),
+  ],
+  session: {
+    strategy: "database",
+  },
+  callbacks: {
+    async session({ session, user }) {
+      if (session.user) {
+        session.user.id = user.id;
+        // Get the user's Google access token for calendar operations
+        const account = await prisma.account.findFirst({
+          where: {
+            userId: user.id,
+            provider: "google",
+          },
+        });
+        if (account) {
+          (session as any).accessToken = account.access_token;
+          (session as any).refreshToken = account.refresh_token;
+        }
+      }
+      return session;
+    },
+  },
+  pages: {
+    signIn: "/login",
+  },
+});
+
+// Type augmentation for session
+declare module "next-auth" {
+  interface Session {
+    user: {
+      id: string;
+      name?: string | null;
+      email?: string | null;
+      image?: string | null;
+    };
+    accessToken?: string;
+    refreshToken?: string;
+  }
+}
+```
+```diff:gemini.ts
+===
+import { GoogleGenerativeAI } from "@google/generative-ai";
+
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
+
+export async function generateEmailDraft(params: {
+  recipientName: string;
+  recipientCompany?: string;
+  context: string;
+  tone: "formal" | "friendly" | "persuasive";
+  senderName: string;
+}): Promise<string> {
+  const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+
+  const prompt = `Generate a professional email draft with the following parameters:
+  
+Recipient: ${params.recipientName}${params.recipientCompany ? ` from ${params.recipientCompany}` : ""}
+Context/Purpose: ${params.context}
+Tone: ${params.tone}
+Sender: ${params.senderName}
+
+Write a complete email including subject line, greeting, body, and signature. Format it clearly with "Subject:" on the first line.`;
+
+  const result = await model.generateContent(prompt);
+  return result.response.text();
+}
+
+export async function scoreLead(leadData: {
+  firstName: string;
+  lastName: string;
+  company?: string;
+  jobTitle?: string;
+  source?: string;
+  estimatedValue?: number;
+  interactions?: number;
+  daysSinceCreated?: number;
+}): Promise<{ score: number; reasoning: string; nextSteps: string[] }> {
+  const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+
+  const prompt = `Analyze this sales lead and provide a quality score from 1-100, along with reasoning and suggested next steps.
+
+Lead Data:
+- Name: ${leadData.firstName} ${leadData.lastName}
+- Company: ${leadData.company || "Not provided"}
+- Job Title: ${leadData.jobTitle || "Not provided"}
+- Lead Source: ${leadData.source || "Unknown"}
+- Estimated Value: ${leadData.estimatedValue ? `$${leadData.estimatedValue}` : "Not provided"}
+- Number of Interactions: ${leadData.interactions || 0}
+- Days Since Created: ${leadData.daysSinceCreated || 0}
+
+Respond in JSON format:
+{
+  "score": <number 1-100>,
+  "reasoning": "<brief explanation of the score>",
+  "nextSteps": ["<action 1>", "<action 2>", "<action 3>"]
+}`;
+
+  const result = await model.generateContent(prompt);
+  const text = result.response.text();
+  
+  // Extract JSON from response
+  const jsonMatch = text.match(/\{[\s\S]*\}/);
+  if (jsonMatch) {
+    return JSON.parse(jsonMatch[0]);
+  }
+  
+  return { score: 50, reasoning: "Unable to analyze", nextSteps: ["Follow up with lead"] };
+}
+
+export async function summarizeMeetingNotes(notes: string): Promise<{
+  summary: string;
+  actionItems: string[];
+  keyDecisions: string[];
+  followUpDate?: string;
+}> {
+  const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+
+  const prompt = `Analyze these meeting notes and provide a structured summary.
+
+Meeting Notes:
+${notes}
+
+Respond in JSON format:
+{
+  "summary": "<2-3 sentence summary of the meeting>",
+  "actionItems": ["<action 1>", "<action 2>", ...],
+  "keyDecisions": ["<decision 1>", "<decision 2>", ...],
+  "followUpDate": "<suggested follow-up date if mentioned, or null>"
+}`;
+
+  const result = await model.generateContent(prompt);
+  const text = result.response.text();
+  
+  const jsonMatch = text.match(/\{[\s\S]*\}/);
+  if (jsonMatch) {
+    return JSON.parse(jsonMatch[0]);
+  }
+  
+  return { summary: notes.substring(0, 200), actionItems: [], keyDecisions: [] };
+}
+
+export async function answerCRMQuery(
+  question: string,
+  context: {
+    leadsCount?: number;
+    contactsCount?: number;
+    opportunitiesCount?: number;
+    pipelineValue?: number;
+    recentActivities?: string[];
+  }
+): Promise<string> {
+  const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+
+  const prompt = `You are a helpful CRM assistant. Answer the user's question based on the provided context.
+
+CRM Context:
+- Total Leads: ${context.leadsCount || "Unknown"}
+- Total Contacts: ${context.contactsCount || "Unknown"}
+- Active Opportunities: ${context.opportunitiesCount || "Unknown"}
+- Pipeline Value: ${context.pipelineValue ? `$${context.pipelineValue.toLocaleString()}` : "Unknown"}
+${context.recentActivities?.length ? `- Recent Activities: ${context.recentActivities.join(", ")}` : ""}
+
+User Question: ${question}
+
+Provide a helpful, concise answer. If you don't have enough information, suggest what data would be needed.`;
+
+  const result = await model.generateContent(prompt);
+  return result.response.text();
+}
+
+export async function suggestFollowUpMessage(params: {
+  leadName: string;
+  lastInteraction: string;
+  daysSinceContact: number;
+  previousOutcome: string;
+}): Promise<string> {
+  const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+
+  const prompt = `Suggest a follow-up message for a sales lead.
+
+Lead: ${params.leadName}
+Last Interaction: ${params.lastInteraction}
+Days Since Last Contact: ${params.daysSinceContact}
+Previous Outcome: ${params.previousOutcome}
+
+Write a short, compelling follow-up message (2-3 sentences) that would be appropriate for SMS or a brief email.`;
+
+  const result = await model.generateContent(prompt);
+  return result.response.text();
+}
+```
+```diff:google-calendar.ts
+===
+import { google } from "googleapis";
+
+export interface CalendarEvent {
+  id?: string;
+  title: string;
+  description?: string;
+  location?: string;
+  startTime: Date;
+  endTime: Date;
+  attendees?: string[];
+}
+
+export async function createGoogleCalendarClient(accessToken: string) {
+  const oauth2Client = new google.auth.OAuth2();
+  oauth2Client.setCredentials({ access_token: accessToken });
+  return google.calendar({ version: "v3", auth: oauth2Client });
+}
+
+export async function fetchGoogleCalendarEvents(
+  accessToken: string,
+  startDate: Date,
+  endDate: Date
+): Promise<CalendarEvent[]> {
+  const calendar = await createGoogleCalendarClient(accessToken);
+
+  const response = await calendar.events.list({
+    calendarId: "primary",
+    timeMin: startDate.toISOString(),
+    timeMax: endDate.toISOString(),
+    singleEvents: true,
+    orderBy: "startTime",
+    maxResults: 100,
+  });
+
+  return (response.data.items || []).map((event) => ({
+    id: event.id || undefined,
+    title: event.summary || "Untitled",
+    description: event.description || undefined,
+    location: event.location || undefined,
+    startTime: new Date(event.start?.dateTime || event.start?.date || new Date()),
+    endTime: new Date(event.end?.dateTime || event.end?.date || new Date()),
+    attendees: event.attendees?.map((a) => a.email).filter(Boolean) as string[],
+  }));
+}
+
+export async function createGoogleCalendarEvent(
+  accessToken: string,
+  event: CalendarEvent
+): Promise<CalendarEvent> {
+  const calendar = await createGoogleCalendarClient(accessToken);
+
+  const response = await calendar.events.insert({
+    calendarId: "primary",
+    requestBody: {
+      summary: event.title,
+      description: event.description,
+      location: event.location,
+      start: {
+        dateTime: event.startTime.toISOString(),
+        timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+      },
+      end: {
+        dateTime: event.endTime.toISOString(),
+        timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+      },
+      attendees: event.attendees?.map((email) => ({ email })),
+    },
+  });
+
+  return {
+    id: response.data.id || undefined,
+    title: response.data.summary || event.title,
+    description: response.data.description || undefined,
+    location: response.data.location || undefined,
+    startTime: new Date(response.data.start?.dateTime || event.startTime),
+    endTime: new Date(response.data.end?.dateTime || event.endTime),
+  };
+}
+
+export async function updateGoogleCalendarEvent(
+  accessToken: string,
+  eventId: string,
+  updates: Partial<CalendarEvent>
+): Promise<CalendarEvent> {
+  const calendar = await createGoogleCalendarClient(accessToken);
+
+  const requestBody: any = {};
+  if (updates.title) requestBody.summary = updates.title;
+  if (updates.description !== undefined) requestBody.description = updates.description;
+  if (updates.location !== undefined) requestBody.location = updates.location;
+  if (updates.startTime) {
+    requestBody.start = {
+      dateTime: updates.startTime.toISOString(),
+      timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+    };
+  }
+  if (updates.endTime) {
+    requestBody.end = {
+      dateTime: updates.endTime.toISOString(),
+      timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+    };
+  }
+
+  const response = await calendar.events.patch({
+    calendarId: "primary",
+    eventId,
+    requestBody,
+  });
+
+  return {
+    id: response.data.id || eventId,
+    title: response.data.summary || "",
+    description: response.data.description || undefined,
+    location: response.data.location || undefined,
+    startTime: new Date(response.data.start?.dateTime || new Date()),
+    endTime: new Date(response.data.end?.dateTime || new Date()),
+  };
+}
+
+export async function deleteGoogleCalendarEvent(
+  accessToken: string,
+  eventId: string
+): Promise<void> {
+  const calendar = await createGoogleCalendarClient(accessToken);
+  await calendar.events.delete({
+    calendarId: "primary",
+    eventId,
+  });
+}
+
+export async function getFreeBusySlots(
+  accessToken: string,
+  emails: string[],
+  startDate: Date,
+  endDate: Date
+): Promise<Record<string, { start: Date; end: Date }[]>> {
+  const calendar = await createGoogleCalendarClient(accessToken);
+
+  const response = await calendar.freebusy.query({
+    requestBody: {
+      timeMin: startDate.toISOString(),
+      timeMax: endDate.toISOString(),
+      items: emails.map((email) => ({ id: email })),
+    },
+  });
+
+  const result: Record<string, { start: Date; end: Date }[]> = {};
+  
+  for (const [email, data] of Object.entries(response.data.calendars || {})) {
+    result[email] = (data.busy || []).map((slot) => ({
+      start: new Date(slot.start || new Date()),
+      end: new Date(slot.end || new Date()),
+    }));
+  }
+
+  return result;
+}
+```
+```diff:sidebar.tsx
+===
+"use client";
+
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { cn } from "@/lib/utils";
+import {
+    LayoutDashboard,
+    Users,
+    Building2,
+    Target,
+    TrendingUp,
+    CheckSquare,
+    Calendar,
+    Map,
+    Sparkles,
+    Settings,
+    LogOut,
+    ChevronLeft,
+    ChevronRight,
+    DoorOpen,
+} from "lucide-react";
+import { useState } from "react";
+import { signOut } from "next-auth/react";
+import { Avatar } from "@/components/ui/avatar";
+
+interface SidebarProps {
+    user?: {
+        name?: string | null;
+        email?: string | null;
+        image?: string | null;
+    };
+}
+
+const navigation = [
+    { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
+    { name: "Leads", href: "/dashboard/leads", icon: Target },
+    { name: "Contacts", href: "/dashboard/contacts", icon: Users },
+    { name: "Accounts", href: "/dashboard/accounts", icon: Building2 },
+    { name: "Opportunities", href: "/dashboard/opportunities", icon: TrendingUp },
+    { name: "Tasks", href: "/dashboard/tasks", icon: CheckSquare },
+    { name: "Door Activity", href: "/dashboard/door-activity", icon: DoorOpen },
+    { name: "Calendar", href: "/dashboard/calendar", icon: Calendar },
+    { name: "Map", href: "/dashboard/map", icon: Map },
+    { name: "AI Assistant", href: "/dashboard/ai-assistant", icon: Sparkles },
+];
+
+const bottomNavigation = [
+    { name: "Settings", href: "/dashboard/settings", icon: Settings },
+];
+
+export function Sidebar({ user }: SidebarProps) {
+    const pathname = usePathname();
+    const [collapsed, setCollapsed] = useState(false);
+
+    return (
+        <aside
+            className={cn(
+                "flex flex-col h-screen bg-slate-900 text-white transition-all duration-300",
+                collapsed ? "w-16" : "w-64"
+            )}
+        >
+            {/* Logo */}
+            <div className="flex items-center h-16 px-4 border-b border-slate-800">
+                <div className="flex items-center gap-3">
+                    <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center font-bold text-lg">
+                        C
+                    </div>
+                    {!collapsed && (
+                        <span className="font-semibold text-lg">My CRM</span>
+                    )}
+                </div>
+            </div>
+
+            {/* Navigation */}
+            <nav className="flex-1 overflow-y-auto py-4">
+                <ul className="space-y-1 px-2">
+                    {navigation.map((item) => {
+                        const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
+                        return (
+                            <li key={item.name}>
+                                <Link
+                                    href={item.href}
+                                    className={cn(
+                                        "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200",
+                                        isActive
+                                            ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg shadow-blue-500/25"
+                                            : "text-slate-300 hover:bg-slate-800 hover:text-white"
+                                    )}
+                                >
+                                    <item.icon className="h-5 w-5 flex-shrink-0" />
+                                    {!collapsed && <span>{item.name}</span>}
+                                </Link>
+                            </li>
+                        );
+                    })}
+                </ul>
+            </nav>
+
+            {/* Bottom section */}
+            <div className="border-t border-slate-800 p-2">
+                <ul className="space-y-1">
+                    {bottomNavigation.map((item) => {
+                        const isActive = pathname === item.href;
+                        return (
+                            <li key={item.name}>
+                                <Link
+                                    href={item.href}
+                                    className={cn(
+                                        "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200",
+                                        isActive
+                                            ? "bg-slate-800 text-white"
+                                            : "text-slate-300 hover:bg-slate-800 hover:text-white"
+                                    )}
+                                >
+                                    <item.icon className="h-5 w-5 flex-shrink-0" />
+                                    {!collapsed && <span>{item.name}</span>}
+                                </Link>
+                            </li>
+                        );
+                    })}
+                    <li>
+                        <button
+                            onClick={() => signOut({ callbackUrl: "/login" })}
+                            className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-slate-300 hover:bg-slate-800 hover:text-white transition-all duration-200 w-full"
+                        >
+                            <LogOut className="h-5 w-5 flex-shrink-0" />
+                            {!collapsed && <span>Sign Out</span>}
+                        </button>
+                    </li>
+                </ul>
+
+                {/* User profile */}
+                {user && (
+                    <div className="mt-4 pt-4 border-t border-slate-800">
+                        <div className="flex items-center gap-3 px-3 py-2">
+                            <Avatar
+                                src={user.image ?? undefined}
+                                fallback={user.name || user.email || undefined}
+                                size="sm"
+                            />
+                            {!collapsed && (
+                                <div className="flex-1 min-w-0">
+                                    <p className="text-sm font-medium text-white truncate">
+                                        {user.name}
+                                    </p>
+                                    <p className="text-xs text-slate-400 truncate">
+                                        {user.email}
+                                    </p>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                )}
+
+                {/* Collapse button */}
+                <button
+                    onClick={() => setCollapsed(!collapsed)}
+                    className="mt-2 flex items-center justify-center w-full py-2 text-slate-400 hover:text-white transition-colors"
+                >
+                    {collapsed ? (
+                        <ChevronRight className="h-5 w-5" />
+                    ) : (
+                        <ChevronLeft className="h-5 w-5" />
+                    )}
+                </button>
+            </div>
+        </aside>
+    );
+}
+```
+```diff:crm-map.tsx
+===
+"use client";
+
+import { useEffect, useRef, useState } from "react";
+import mapboxgl from "mapbox-gl";
+import "mapbox-gl/dist/mapbox-gl.css";
+
+interface MapMarker {
+  id: string;
+  latitude: number;
+  longitude: number;
+  type: "lead" | "contact" | "account" | "activity";
+  status?: string;
+  title: string;
+  description?: string;
+}
+
+interface CRMMapProps {
+  markers?: MapMarker[];
+  center?: [number, number];
+  zoom?: number;
+  onMarkerClick?: (marker: MapMarker) => void;
+  className?: string;
+}
+
+const statusColors: Record<string, string> = {
+  NEW: "#3b82f6",           // blue
+  CONTACTED: "#8b5cf6",     // purple
+  QUALIFIED: "#10b981",     // green
+  UNQUALIFIED: "#f59e0b",   // amber
+  CONVERTED: "#059669",     // emerald
+  DEAD: "#ef4444",          // red
+  activity: "#6366f1",      // indigo
+  contact: "#06b6d4",       // cyan
+  account: "#f97316",       // orange
+};
+
+export function CRMMap({
+  markers = [],
+  center = [-98.5795, 39.8283], // Center of USA
+  zoom = 4,
+  onMarkerClick,
+  className = "w-full h-[600px]",
+}: CRMMapProps) {
+  const mapContainer = useRef<HTMLDivElement>(null);
+  const map = useRef<mapboxgl.Map | null>(null);
+  const markersRef = useRef<mapboxgl.Marker[]>([]);
+  const [mapLoaded, setMapLoaded] = useState(false);
+
+  useEffect(() => {
+    if (!mapContainer.current) return;
+
+    const accessToken = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN;
+    if (!accessToken) {
+      console.error("Mapbox access token is not set");
+      return;
+    }
+
+    mapboxgl.accessToken = accessToken;
+
+    map.current = new mapboxgl.Map({
+      container: mapContainer.current,
+      style: "mapbox://styles/mapbox/dark-v11",
+      center: center,
+      zoom: zoom,
+    });
+
+    map.current.addControl(new mapboxgl.NavigationControl(), "top-right");
+    map.current.addControl(
+      new mapboxgl.GeolocateControl({
+        positionOptions: { enableHighAccuracy: true },
+        trackUserLocation: true,
+        showUserHeading: true,
+      }),
+      "top-right"
+    );
+
+    map.current.on("load", () => {
+      setMapLoaded(true);
+    });
+
+    return () => {
+      map.current?.remove();
+    };
+  }, [center, zoom]);
+
+  // Add markers when map is loaded
+  useEffect(() => {
+    if (!map.current || !mapLoaded) return;
+
+    // Clear existing markers
+    markersRef.current.forEach((marker) => marker.remove());
+    markersRef.current = [];
+
+    // Add new markers
+    markers.forEach((markerData) => {
+      const color = markerData.status
+        ? statusColors[markerData.status] || "#64748b"
+        : statusColors[markerData.type] || "#64748b";
+
+      const el = document.createElement("div");
+      el.className = "custom-marker";
+      el.style.cssText = `
+        width: 24px;
+        height: 24px;
+        background-color: ${color};
+        border: 3px solid white;
+        border-radius: 50%;
+        cursor: pointer;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+        transition: transform 0.2s;
+      `;
+
+      el.addEventListener("mouseenter", () => {
+        el.style.transform = "scale(1.2)";
+      });
+      el.addEventListener("mouseleave", () => {
+        el.style.transform = "scale(1)";
+      });
+
+      const popup = new mapboxgl.Popup({ offset: 25 }).setHTML(`
+        <div style="padding: 8px; min-width: 150px;">
+          <h3 style="font-weight: 600; margin: 0 0 4px 0; font-size: 14px;">${markerData.title}</h3>
+          ${markerData.description ? `<p style="margin: 0; font-size: 12px; color: #666;">${markerData.description}</p>` : ""}
+          ${markerData.status ? `<span style="display: inline-block; margin-top: 8px; padding: 2px 8px; background: ${color}20; color: ${color}; border-radius: 9999px; font-size: 11px; font-weight: 500;">${markerData.status}</span>` : ""}
+        </div>
+      `);
+
+      const marker = new mapboxgl.Marker(el)
+        .setLngLat([markerData.longitude, markerData.latitude])
+        .setPopup(popup)
+        .addTo(map.current!);
+
+      if (onMarkerClick) {
+        el.addEventListener("click", () => onMarkerClick(markerData));
+      }
+
+      markersRef.current.push(marker);
+    });
+
+    // Fit bounds to markers if there are any
+    if (markers.length > 0) {
+      const bounds = new mapboxgl.LngLatBounds();
+      markers.forEach((m) => bounds.extend([m.longitude, m.latitude]));
+      map.current.fitBounds(bounds, { padding: 50, maxZoom: 15 });
+    }
+  }, [markers, mapLoaded, onMarkerClick]);
+
+  return (
+    <div className={`relative rounded-xl overflow-hidden ${className}`}>
+      <div ref={mapContainer} className="w-full h-full" />
+      {!mapLoaded && (
+        <div className="absolute inset-0 flex items-center justify-center bg-slate-900">
+          <div className="text-white">Loading map...</div>
+        </div>
+      )}
+    </div>
+  );
+}
+```

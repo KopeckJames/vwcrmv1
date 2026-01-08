@@ -1,0 +1,5 @@
+{
+  "artifactType":  "ARTIFACT_TYPE_IMPLEMENTATION_PLAN",
+  "summary":  "Detailed implementation plan for a modern CRM foundation inspired by EspoCRM. Covers architecture (Next.js App Router, PostgreSQL, Prisma), core entities (Contacts, Accounts, Leads, Opportunities, Tasks), Google/Outlook Calendar integration via OAuth 2.0, Gemini AI assistant features (email drafting, lead scoring, meeting summaries), and comprehensive geolocation features using Mapbox (entity mapping, clustering, route planning, territory management). Includes tech stack, project structure, timeline estimates, and verification plan.",
+  "updatedAt":  "2026-01-07T23:59:09.445460Z"
+}

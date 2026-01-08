@@ -1,0 +1,462 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ============================================================================
+// Authentication Models (NextAuth.js)
+// ============================================================================
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String    @unique
+  emailVerified DateTime?
+  image         String?
+  role          String    @default("user")
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  accounts      Account[]
+  sessions      Session[]
+  
+  // CRM relations
+  assignedLeads       Lead[]        @relation("AssignedLeads")
+  assignedTasks       Task[]        @relation("AssignedTasks")
+  assignedOpportunities Opportunity[] @relation("AssignedOpportunities")
+  activities          Activity[]
+  doorActivities      DoorActivity[]
+}
+
+model Account {
+  id                       String  @id @default(cuid())
+  userId                   String
+  type                     String
+  provider                 String
+  providerAccountId        String
+  refresh_token            String? @db.Text
+  access_token             String? @db.Text
+  expires_at               Int?
+  token_type               String?
+  scope                    String?
+  id_token                 String? @db.Text
+  session_state            String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+// ============================================================================
+// CRM Core Entities
+// ============================================================================
+
+model Contact {
+  id          String   @id @default(cuid())
+  firstName   String
+  lastName    String
+  email       String?
+  phone       String?
+  mobile      String?
+  jobTitle    String?
+  department  String?
+  description String?  @db.Text
+  
+  // Address fields
+  street      String?
+  city        String?
+  state       String?
+  zipCode     String?
+  country     String?
+  
+  // Geolocation
+  latitude    Float?
+  longitude   Float?
+  
+  // Relations
+  accountId   String?
+  account     CRMAccount? @relation(fields: [accountId], references: [id])
+  
+  activities  Activity[]
+  tasks       Task[]
+  opportunities Opportunity[]
+  doorActivities DoorActivity[]
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([accountId])
+  @@index([email])
+  @@index([latitude, longitude])
+}
+
+model CRMAccount {
+  id          String   @id @default(cuid())
+  name        String
+  website     String?
+  industry    String?
+  description String?  @db.Text
+  phone       String?
+  annualRevenue Float?
+  employees   Int?
+  
+  // Billing Address
+  billingStreet   String?
+  billingCity     String?
+  billingState    String?
+  billingZipCode  String?
+  billingCountry  String?
+  
+  // Shipping Address
+  shippingStreet  String?
+  shippingCity    String?
+  shippingState   String?
+  shippingZipCode String?
+  shippingCountry String?
+  
+  // Geolocation (billing address)
+  latitude    Float?
+  longitude   Float?
+  
+  // Relations
+  contacts    Contact[]
+  opportunities Opportunity[]
+  activities  Activity[]
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([name])
+  @@index([latitude, longitude])
+}
+
+model Lead {
+  id          String   @id @default(cuid())
+  firstName   String
+  lastName    String
+  email       String?
+  phone       String?
+  mobile      String?
+  company     String?
+  jobTitle    String?
+  website     String?
+  description String?  @db.Text
+  
+  // Lead specific fields
+  status      LeadStatus @default(NEW)
+  source      String?
+  estimatedValue Float?
+  
+  // Address fields
+  street      String?
+  city        String?
+  state       String?
+  zipCode     String?
+  country     String?
+  
+  // Geolocation
+  latitude    Float?
+  longitude   Float?
+  
+  // Territory assignment
+  territoryId String?
+  territory   Territory? @relation(fields: [territoryId], references: [id])
+  
+  // Assignment
+  assignedToId String?
+  assignedTo   User?   @relation("AssignedLeads", fields: [assignedToId], references: [id])
+  
+  // Relations
+  activities   Activity[]
+  tasks        Task[]
+  doorActivities DoorActivity[]
+  
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([assignedToId])
+  @@index([status])
+  @@index([latitude, longitude])
+  @@index([territoryId])
+}
+
+enum LeadStatus {
+  NEW
+  CONTACTED
+  QUALIFIED
+  UNQUALIFIED
+  CONVERTED
+  DEAD
+}
+
+model Opportunity {
+  id          String   @id @default(cuid())
+  name        String
+  description String?  @db.Text
+  
+  // Opportunity specific fields
+  stage       OpportunityStage @default(PROSPECTING)
+  amount      Float?
+  probability Int?     @default(0)
+  expectedCloseDate DateTime?
+  
+  // Relations
+  accountId   String?
+  account     CRMAccount? @relation(fields: [accountId], references: [id])
+  
+  contactId   String?
+  contact     Contact? @relation(fields: [contactId], references: [id])
+  
+  assignedToId String?
+  assignedTo   User?   @relation("AssignedOpportunities", fields: [assignedToId], references: [id])
+  
+  activities  Activity[]
+  tasks       Task[]
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([accountId])
+  @@index([contactId])
+  @@index([assignedToId])
+  @@index([stage])
+}
+
+enum OpportunityStage {
+  PROSPECTING
+  QUALIFICATION
+  NEEDS_ANALYSIS
+  VALUE_PROPOSITION
+  NEGOTIATION
+  CLOSED_WON
+  CLOSED_LOST
+}
+
+model Task {
+  id          String   @id @default(cuid())
+  title       String
+  description String?  @db.Text
+  
+  status      TaskStatus @default(NOT_STARTED)
+  priority    TaskPriority @default(MEDIUM)
+  dueDate     DateTime?
+  completedAt DateTime?
+  
+  // Relations
+  assignedToId String?
+  assignedTo   User?   @relation("AssignedTasks", fields: [assignedToId], references: [id])
+  
+  contactId   String?
+  contact     Contact? @relation(fields: [contactId], references: [id])
+  
+  leadId      String?
+  lead        Lead?    @relation(fields: [leadId], references: [id])
+  
+  opportunityId String?
+  opportunity   Opportunity? @relation(fields: [opportunityId], references: [id])
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([assignedToId])
+  @@index([status])
+  @@index([dueDate])
+}
+
+enum TaskStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  COMPLETED
+  WAITING
+  DEFERRED
+}
+
+enum TaskPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+// ============================================================================
+// Activity Tracking
+// ============================================================================
+
+model Activity {
+  id          String   @id @default(cuid())
+  type        ActivityType
+  subject     String
+  description String?  @db.Text
+  dateTime    DateTime @default(now())
+  duration    Int?     // in minutes
+  
+  // Relations
+  userId      String
+  user        User     @relation(fields: [userId], references: [id])
+  
+  contactId   String?
+  contact     Contact? @relation(fields: [contactId], references: [id])
+  
+  leadId      String?
+  lead        Lead?    @relation(fields: [leadId], references: [id])
+  
+  accountId   String?
+  account     CRMAccount? @relation(fields: [accountId], references: [id])
+  
+  opportunityId String?
+  opportunity   Opportunity? @relation(fields: [opportunityId], references: [id])
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([userId])
+  @@index([type])
+  @@index([dateTime])
+}
+
+enum ActivityType {
+  CALL
+  EMAIL
+  MEETING
+  TASK
+  NOTE
+  DOOR_KNOCK
+}
+
+// ============================================================================
+// Door-to-Door Activity Logging
+// ============================================================================
+
+model DoorActivity {
+  id          String   @id @default(cuid())
+  
+  outcome     DoorOutcome
+  notes       String?  @db.Text
+  
+  // What was left/done
+  leftMaterials Boolean @default(false)
+  materialsType String? // e.g., "flyer", "brochure", "business card"
+  
+  // Location at time of activity
+  latitude    Float
+  longitude   Float
+  
+  // Photo of materials left (optional)
+  photoUrl    String?
+  
+  // Relations
+  userId      String
+  user        User     @relation(fields: [userId], references: [id])
+  
+  // Can be linked to a lead or contact
+  leadId      String?
+  lead        Lead?    @relation(fields: [leadId], references: [id])
+  
+  contactId   String?
+  contact     Contact? @relation(fields: [contactId], references: [id])
+  
+  createdAt   DateTime @default(now())
+
+  @@index([userId])
+  @@index([leadId])
+  @@index([contactId])
+  @@index([createdAt])
+  @@index([latitude, longitude])
+}
+
+enum DoorOutcome {
+  NO_ANSWER
+  LEFT_MATERIALS
+  SPOKE_WITH_RESIDENT
+  NOT_INTERESTED
+  INTERESTED
+  APPOINTMENT_SET
+  WRONG_ADDRESS
+  DO_NOT_CONTACT
+}
+
+// ============================================================================
+// Calendar Integration
+// ============================================================================
+
+model CalendarEvent {
+  id          String   @id @default(cuid())
+  
+  title       String
+  description String?  @db.Text
+  location    String?
+  
+  startTime   DateTime
+  endTime     DateTime
+  allDay      Boolean  @default(false)
+  
+  // External calendar sync
+  provider    CalendarProvider?
+  externalId  String?
+  syncedAt    DateTime?
+  
+  // Reminders
+  reminderMinutes Int[]
+  
+  // Attendees (stored as JSON for simplicity)
+  attendees   Json?
+  
+  userId      String
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([provider, externalId])
+  @@index([userId])
+  @@index([startTime, endTime])
+}
+
+enum CalendarProvider {
+  GOOGLE
+  OUTLOOK
+  LOCAL
+}
+
+// ============================================================================
+// Territory Management
+// ============================================================================
+
+model Territory {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  color       String?  // Hex color for map display
+  
+  // GeoJSON polygon boundary
+  boundary    Json?
+  
+  // Relations
+  leads       Lead[]
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([name])
+}
