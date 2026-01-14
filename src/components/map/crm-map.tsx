@@ -11,6 +11,7 @@ interface MapMarker {
     status?: string;
     title: string;
     description?: string;
+    color?: string; // Custom color for admin user tracking
 }
 
 interface CRMMapProps {

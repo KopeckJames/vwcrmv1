@@ -40,6 +40,11 @@ interface Lead {
     email?: string | null;
     phone?: string | null;
     description?: string | null;
+    assignedToId?: string | null;
+    assignedTo?: {
+        id: string;
+        name: string | null;
+    } | null;
 }
 
 interface Contact {
@@ -50,6 +55,7 @@ interface Contact {
     longitude: number | null;
     city?: string | null;
     state?: string | null;
+    assignedToId?: string | null;
 }
 
 interface Account {
@@ -60,6 +66,7 @@ interface Account {
     longitude: number | null;
     billingCity?: string | null;
     billingState?: string | null;
+    assignedToId?: string | null;
 }
 
 interface DoorActivity {
@@ -71,6 +78,7 @@ interface DoorActivity {
     notes?: string | null;
     leadId?: string | null;
     contactId?: string | null;
+    userId: string;
 }
 
 interface MapViewProps {
@@ -80,6 +88,13 @@ interface MapViewProps {
         accounts: Account[];
         doorActivities: DoorActivity[];
     };
+    user?: {
+        id: string;
+        role?: string;
+        name?: string | null;
+        email?: string | null;
+        image?: string | null;
+    } | null;
 }
 
 interface MapMarker {
@@ -90,9 +105,24 @@ interface MapMarker {
     status?: string;
     title: string;
     description?: string;
+    color?: string;
 }
 
-export function MapView({ data }: MapViewProps) {
+const USER_COLORS = [
+    "#3b82f6", // Blue
+    "#10b981", // Emerald
+    "#f59e0b", // Amber
+    "#8b5cf6", // Violet
+    "#ef4444", // Red
+    "#06b6d4", // Cyan
+    "#f97316", // Orange
+    "#ec4899", // Pink
+    "#6366f1", // Indigo
+    "#84cc16", // Lime
+];
+
+export function MapView({ data, user }: MapViewProps) {
+    const isAdmin = user?.role === "admin";
     const [leads, setLeads] = useState<Lead[]>(data.leads);
     const [filters, setFilters] = useState({
         leads: true,
@@ -103,6 +133,24 @@ export function MapView({ data }: MapViewProps) {
     const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
     const [isSaving, setIsSaving] = useState(false);
     const [editForm, setEditForm] = useState<Lead | null>(null);
+
+    // Map user IDs to colors for admin view
+    const userColorMap = useMemo(() => {
+        if (!isAdmin) return {};
+        const map: Record<string, string> = {};
+        const allUserIds = new Set<string>();
+
+        data.leads.forEach(l => l.assignedToId && allUserIds.add(l.assignedToId));
+        data.contacts.forEach(c => c.assignedToId && allUserIds.add(c.assignedToId));
+        data.accounts.forEach(a => a.assignedToId && allUserIds.add(a.assignedToId));
+        data.doorActivities.forEach(d => allUserIds.add(d.userId));
+
+        Array.from(allUserIds).forEach((id, index) => {
+            map[id] = USER_COLORS[index % USER_COLORS.length];
+        });
+
+        return map;
+    }, [data, isAdmin]);
 
     const handleMarkerClick = (marker: MapMarker) => {
         if (marker.type === "lead") {
@@ -136,7 +184,6 @@ export function MapView({ data }: MapViewProps) {
             });
             if (res.ok) {
                 const updatedLead = await res.json();
-                // Update local status with state to trigger map refresh
                 setLeads(prev => prev.map(l => l.id === updatedLead.id ? { ...l, ...updatedLead } : l));
                 setSelectedLead(null);
                 setEditForm(null);
@@ -162,6 +209,7 @@ export function MapView({ data }: MapViewProps) {
                         status: lead.status,
                         title: `${lead.firstName} ${lead.lastName}`,
                         description: lead.company || `${lead.city}, ${lead.state}`,
+                        color: isAdmin && lead.assignedToId ? userColorMap[lead.assignedToId] : undefined,
                     });
                 }
             });
@@ -177,6 +225,7 @@ export function MapView({ data }: MapViewProps) {
                         type: "contact" as const,
                         title: `${contact.firstName} ${contact.lastName}`,
                         description: `${contact.city}, ${contact.state}`,
+                        color: isAdmin && contact.assignedToId ? userColorMap[contact.assignedToId] : undefined,
                     });
                 }
             });
@@ -192,6 +241,7 @@ export function MapView({ data }: MapViewProps) {
                         type: "account" as const,
                         title: account.name,
                         description: account.industry || `${account.billingCity}, ${account.billingState}`,
+                        color: isAdmin && account.assignedToId ? userColorMap[account.assignedToId] : undefined,
                     });
                 }
             });
@@ -207,12 +257,13 @@ export function MapView({ data }: MapViewProps) {
                     status: activity.outcome,
                     title: activity.outcome.replace(/_/g, " "),
                     description: activity.notes?.substring(0, 50) || new Date(activity.createdAt).toLocaleDateString(),
+                    color: isAdmin ? userColorMap[activity.userId] : undefined,
                 });
             });
         }
 
         return result;
-    }, [data, leads, filters]);
+    }, [data, leads, filters, isAdmin, userColorMap]);
 
     const stats = {
         leads: data.leads.length,
@@ -220,6 +271,39 @@ export function MapView({ data }: MapViewProps) {
         accounts: data.accounts.length,
         activities: data.doorActivities.length,
     };
+
+    // Prepare legend for admin view
+    const legendUsers = useMemo(() => {
+        if (!isAdmin) return [];
+        const seen = new Set<string>();
+        const users: { id: string, name: string, color: string }[] = [];
+
+        data.leads.forEach(l => {
+            if (l.assignedToId && !seen.has(l.assignedToId)) {
+                seen.add(l.assignedToId);
+                users.push({
+                    id: l.assignedToId,
+                    name: l.assignedTo?.name || "Unassigned",
+                    color: userColorMap[l.assignedToId]
+                });
+            }
+        });
+
+        // Add users from activities if not already there
+        data.doorActivities.forEach(d => {
+            if (d.userId && !seen.has(d.userId)) {
+                seen.add(d.userId);
+                // We'd need to fetch user names if missing, but let's stick to leads for now or generic names
+                users.push({
+                    id: d.userId,
+                    name: "Unknown User",
+                    color: userColorMap[d.userId]
+                });
+            }
+        });
+
+        return users;
+    }, [data, isAdmin, userColorMap]);
 
     return (
         <div className="space-y-4 flex flex-col h-[calc(100vh-8rem)]">
@@ -410,13 +494,21 @@ export function MapView({ data }: MapViewProps) {
                 <CardContent className="py-3">
                     <div className="flex flex-wrap items-center gap-4 text-sm">
                         <span className="font-medium text-slate-500 dark:text-slate-400">
-                            Lead Status:
+                            {isAdmin ? "Users:" : "Lead Status:"}
                         </span>
-                        <LegendItem color="#3b82f6" label="New" />
-                        <LegendItem color="#8b5cf6" label="Contacted" />
-                        <LegendItem color="#10b981" label="Qualified" />
-                        <LegendItem color="#f59e0b" label="Unqualified" />
-                        <LegendItem color="#ef4444" label="Dead" />
+                        {isAdmin ? (
+                            legendUsers.map(u => (
+                                <LegendItem key={u.id} color={u.color} label={u.name} />
+                            ))
+                        ) : (
+                            <>
+                                <LegendItem color="#3b82f6" label="New" />
+                                <LegendItem color="#8b5cf6" label="Contacted" />
+                                <LegendItem color="#10b981" label="Qualified" />
+                                <LegendItem color="#f59e0b" label="Unqualified" />
+                                <LegendItem color="#ef4444" label="Dead" />
+                            </>
+                        )}
                     </div>
                 </CardContent>
             </Card>

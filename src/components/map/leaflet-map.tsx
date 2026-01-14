@@ -12,6 +12,7 @@ interface MapMarker {
     status?: string;
     title: string;
     description?: string;
+    color?: string; // Custom color for admin user tracking
 }
 
 interface LeafletMapProps {
@@ -67,9 +68,10 @@ export default function LeafletMap({
 
         // Add new markers
         markers.forEach((markerData) => {
-            const color = markerData.status
-                ? statusColors[markerData.status] || "#64748b"
-                : statusColors[markerData.type] || "#64748b";
+            const color = markerData.color
+                || (markerData.status ? statusColors[markerData.status] : null)
+                || statusColors[markerData.type]
+                || "#64748b";
 
             // Create custom icon
             const icon = L.divIcon({
