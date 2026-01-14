@@ -5,20 +5,28 @@ import { authConfig } from "./auth.config";
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
     adapter: PrismaAdapter(prisma),
-    session: {
-        strategy: "database",
-    },
     ...authConfig,
     callbacks: {
         ...authConfig.callbacks,
-        async session({ session, user }) {
-            if (session.user) {
-                session.user.id = user.id;
-                session.user.role = (user as any).role;
-                // Get the user's Google access token for calendar operations
+        async session({ session, token, user }) {
+            // If using JWT strategy (which we are), token will be available
+            if (token && session.user) {
+                session.user.id = token.id as string;
+                session.user.role = token.role as string;
+            }
+
+            // For extra safety or if users are already in DB with 'user' role, 
+            // ensure the admin email gets the admin role in the session
+            if (session.user?.email === "Admin@velvetwatertx.com") {
+                session.user.role = "admin";
+            }
+
+            // Still need to fetch tokens for calendar if needed
+            const userId = token?.id as string || user?.id;
+            if (userId && session.user) {
                 const account = await prisma.account.findFirst({
                     where: {
-                        userId: user.id,
+                        userId: userId,
                         provider: "google",
                     },
                 });
@@ -28,6 +36,16 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
                 }
             }
             return session;
+        },
+    },
+    events: {
+        async createUser({ user }) {
+            if (user.email === "Admin@velvetwatertx.com") {
+                await prisma.user.update({
+                    where: { id: user.id },
+                    data: { role: "admin" },
+                });
+            }
         },
     },
 });

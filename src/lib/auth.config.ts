@@ -24,7 +24,27 @@ export const authConfig = {
     pages: {
         signIn: "/login",
     },
+    session: {
+        strategy: "jwt",
+    },
     callbacks: {
+        async jwt({ token, user, trigger, session }) {
+            if (user) {
+                token.id = user.id;
+                token.role = (user as any).role || "user";
+            }
+            if (trigger === "update" && session) {
+                return { ...token, ...session.user };
+            }
+            return token;
+        },
+        async session({ session, token }) {
+            if (token && session.user) {
+                session.user.id = token.id as string;
+                session.user.role = token.role as string;
+            }
+            return session;
+        },
         authorized({ auth, request: { nextUrl } }) {
             const isLoggedIn = !!auth?.user;
             const isAuthPage = nextUrl.pathname.startsWith("/login");
