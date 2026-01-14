@@ -41,6 +41,18 @@ interface Lead {
     photoUrl?: string | null;
     estimatedValue?: number | null;
     createdAt: Date | string;
+    assignedToId?: string | null;
+    assignedTo?: {
+        id: string;
+        name?: string | null;
+        image?: string | null;
+    } | null;
+}
+
+interface User {
+    id: string;
+    name: string | null;
+    email: string | null;
 }
 
 const statusColors: Record<string, "default" | "info" | "warning" | "success" | "danger" | "secondary"> = {
@@ -79,6 +91,59 @@ export function LeadList({ initialLeads = [] }: LeadListProps) {
         company: "",
         status: "NEW",
     });
+
+    // Reassignment state
+    const [isReassignOpen, setIsReassignOpen] = useState(false);
+    const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
+    const [targetUserId, setTargetUserId] = useState<string>("");
+    const [users, setUsers] = useState<User[]>([]);
+    const [isReassigning, setIsReassigning] = useState(false);
+
+    // Fetch users for assignment
+    const fetchUsers = async () => {
+        try {
+            const res = await fetch("/api/users");
+            if (res.ok) {
+                const data = await res.json();
+                setUsers(data);
+            }
+        } catch (error) {
+            console.error("Failed to fetch users:", error);
+        }
+    };
+
+    const handleReassign = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!selectedLead || !targetUserId) return;
+
+        setIsReassigning(true);
+        try {
+            const res = await fetch(`/api/leads/${selectedLead.id}`, {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ assignedToId: targetUserId }),
+            });
+            if (res.ok) {
+                setIsReassignOpen(false);
+                setSelectedLead(null);
+                setTargetUserId("");
+                router.refresh();
+            }
+        } catch (error) {
+            console.error("Failed to reassign lead:", error);
+        } finally {
+            setIsReassigning(false);
+        }
+    };
+
+    const openReassignDialog = (lead: Lead) => {
+        setSelectedLead(lead);
+        setTargetUserId(lead.assignedToId || "");
+        setIsReassignOpen(true);
+        if (users.length === 0) {
+            fetchUsers();
+        }
+    };
 
     const handleQuickAdd = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -126,27 +191,29 @@ export function LeadList({ initialLeads = [] }: LeadListProps) {
 
     return (
         <div className="space-y-6">
-            <div className="flex flex-col lg:flex-row gap-4 lg:items-center justify-between bg-white dark:bg-slate-900 p-4 rounded-xl border">
-                <div className="flex flex-col md:flex-row gap-4 items-center">
-                    <div className="flex items-center gap-2">
-                        <Filter className="h-5 w-5 text-slate-500" />
+            <div className="flex flex-col gap-4 bg-white dark:bg-slate-900 p-3 md:p-4 rounded-xl border shadow-sm">
+                <div className="flex flex-col md:flex-row gap-3 md:items-center">
+                    <div className="flex items-center gap-2 shrink-0">
+                        <Filter className="h-4 w-4 text-slate-500" />
                         <h2 className="font-semibold text-slate-900 dark:text-slate-100 whitespace-nowrap">Filter</h2>
                     </div>
-                    <div className="relative w-full md:w-64">
+
+                    <div className="relative flex-1 max-w-md">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                         <Input
                             placeholder="Search leads..."
-                            className="pl-10 h-9"
+                            className="pl-9 h-10 border-slate-200 dark:border-slate-800"
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
                         />
                     </div>
-                    <div className="flex gap-1 overflow-x-auto pb-1 md:pb-0">
+
+                    <div className="flex gap-2 overflow-x-auto pb-1 md:pb-0 no-scrollbar scroll-smooth">
                         <Button
                             variant={statusFilter === "ALL" ? "default" : "outline"}
                             size="sm"
                             onClick={() => setStatusFilter("ALL")}
-                            className="h-8 rounded-full"
+                            className="h-8 rounded-full whitespace-nowrap shrink-0"
                         >
                             All
                         </Button>
@@ -156,8 +223,7 @@ export function LeadList({ initialLeads = [] }: LeadListProps) {
                                 variant={statusFilter === value ? "default" : "outline"}
                                 size="sm"
                                 onClick={() => setStatusFilter(value)}
-                                className={`h-8 rounded-full whitespace-nowrap ${statusFilter === value ? "bg-blue-600 hover:bg-blue-700" : ""
-                                    }`}
+                                className="h-8 rounded-full whitespace-nowrap shrink-0"
                             >
                                 {label}
                             </Button>
@@ -167,16 +233,16 @@ export function LeadList({ initialLeads = [] }: LeadListProps) {
 
                 <Dialog open={isQuickAddOpen} onOpenChange={setIsQuickAddOpen}>
                     <DialogTrigger asChild>
-                        <Button className="bg-emerald-600 hover:bg-emerald-700 text-white">
+                        <Button className="w-full md:w-auto h-10">
                             <Plus className="h-4 w-4 mr-2" />
-                            Quick Add
+                            Quick Add Lead
                         </Button>
                     </DialogTrigger>
-                    <DialogContent className="sm:max-w-[425px]">
+                    <DialogContent className="max-w-md w-[95vw] overflow-y-auto max-h-[90vh] rounded-2xl">
                         <DialogHeader>
                             <DialogTitle>Quick Add Lead</DialogTitle>
                             <DialogDescription>
-                                Add a new lead quickly. You can fill out more details later.
+                                Create a new lead record quickly.
                             </DialogDescription>
                         </DialogHeader>
                         <form onSubmit={handleQuickAdd} className="space-y-4 py-4">
@@ -248,57 +314,120 @@ export function LeadList({ initialLeads = [] }: LeadListProps) {
                         </form>
                     </DialogContent>
                 </Dialog>
+
+                {/* Reassignment Dialog */}
+                <Dialog open={isReassignOpen} onOpenChange={setIsReassignOpen}>
+                    <DialogContent className="max-w-md w-[95vw] rounded-2xl">
+                        <DialogHeader>
+                            <DialogTitle>Reassign Lead</DialogTitle>
+                            <DialogDescription>
+                                Transfer this lead to another user.
+                            </DialogDescription>
+                        </DialogHeader>
+                        <form onSubmit={handleReassign} className="space-y-4 py-4">
+                            <div className="space-y-2">
+                                <Label htmlFor="targetUser">Select User</Label>
+                                <Select
+                                    value={targetUserId}
+                                    onValueChange={setTargetUserId}
+                                >
+                                    <SelectTrigger id="targetUser">
+                                        <SelectValue placeholder="Select a user" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {users.map((user) => (
+                                            <SelectItem key={user.id} value={user.id}>
+                                                {user.name || user.email}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            <DialogFooter>
+                                <Button type="submit" disabled={isReassigning || !targetUserId} className="w-full">
+                                    {isReassigning ? (
+                                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                    ) : (
+                                        <Save className="h-4 w-4 mr-2" />
+                                    )}
+                                    Confirm Reassignment
+                                </Button>
+                            </DialogFooter>
+                        </form>
+                    </DialogContent>
+                </Dialog>
             </div>
 
-            <div className="grid gap-4">
+            <div className="grid gap-3 md:gap-4">
                 {filteredLeads.map((lead) => (
                     <Link key={lead.id} href={`/dashboard/leads/${lead.id}`}>
-                        <Card className="hover:shadow-lg transition-all cursor-pointer border-l-4" style={{ borderLeftColor: lead.status === 'NEW' ? '#0ea5e9' : lead.status === 'QUALIFIED' ? '#10b981' : '#cbd5e1' }}>
-                            <CardContent className="p-4">
-                                <div className="flex items-start justify-between">
-                                    <div className="flex items-start gap-4">
+                        <Card className="hover:shadow-md transition-all cursor-pointer border-l-4 overflow-hidden" style={{ borderLeftColor: lead.status === 'NEW' ? '#0ea5e9' : lead.status === 'QUALIFIED' ? '#10b981' : '#cbd5e1' }}>
+                            <CardContent className="p-3 md:p-4">
+                                <div className="flex items-start justify-between gap-2">
+                                    <div className="flex items-start gap-3 md:gap-4 flex-1 min-w-0">
                                         <Avatar
                                             fallback={`${lead.firstName?.[0] || ""}${lead.lastName?.[0] || ""}` || "?"}
-                                            className="h-12 w-12"
+                                            className="h-10 w-10 md:h-12 md:w-12 shrink-0"
                                         />
-                                        <div>
-                                            <h3 className="font-semibold text-slate-900 dark:text-slate-100">
+                                        <div className="min-w-0 flex-1">
+                                            <h3 className="font-semibold text-slate-900 dark:text-slate-100 truncate">
                                                 {lead.firstName || "Unknown"} {lead.lastName || "Lead"}
                                             </h3>
                                             {lead.company && (
-                                                <div className="flex items-center gap-1 text-sm text-slate-500 dark:text-slate-400 mt-1">
-                                                    <Building2 className="h-3.5 w-3.5" />
+                                                <div className="flex items-center gap-1 text-xs md:text-sm text-slate-500 dark:text-slate-400 mt-0.5 truncate">
+                                                    <Building2 className="h-3 w-3 md:h-3.5 md:w-3.5" />
                                                     {lead.company}
                                                 </div>
                                             )}
-                                            <div className="flex flex-wrap gap-4 mt-2 text-sm text-slate-500 dark:text-slate-400">
+                                            <div className="flex flex-col sm:flex-row sm:flex-wrap gap-1 sm:gap-4 mt-2 text-xs md:text-sm text-slate-500 dark:text-slate-400">
                                                 {lead.email && (
-                                                    <div className="flex items-center gap-1">
-                                                        <Mail className="h-3.5 w-3.5" />
+                                                    <div className="flex items-center gap-1 truncate">
+                                                        <Mail className="h-3 w-3 md:h-3.5 md:w-3.5" />
                                                         {lead.email}
                                                     </div>
                                                 )}
                                                 {lead.phone && (
                                                     <div className="flex items-center gap-1">
-                                                        <Phone className="h-3.5 w-3.5" />
+                                                        <Phone className="h-3 w-3 md:h-3.5 md:w-3.5" />
                                                         {lead.phone}
                                                     </div>
                                                 )}
                                                 {lead.city && lead.state && (
-                                                    <div className="flex items-center gap-1">
-                                                        <MapPin className="h-3.5 w-3.5" />
+                                                    <div className="flex items-center gap-1 truncate">
+                                                        <MapPin className="h-3 w-3 md:h-3.5 md:w-3.5" />
                                                         {lead.city}, {lead.state}
                                                     </div>
                                                 )}
                                             </div>
                                         </div>
                                     </div>
-                                    <div className="flex flex-col items-end gap-2">
-                                        <Badge variant={(statusColors[lead.status] || "default") as any}>
+                                    <div className="flex flex-col items-end gap-2 shrink-0">
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={(e) => {
+                                                e.preventDefault();
+                                                openReassignDialog(lead);
+                                            }}
+                                            className="h-8 text-xs text-slate-500 hover:text-blue-600"
+                                        >
+                                            Reassign
+                                        </Button>
+                                        <Badge variant={(statusColors[lead.status] || "default") as "default" | "info" | "warning" | "success" | "danger" | "secondary"}>
                                             {statusLabels[lead.status] || lead.status}
                                         </Badge>
+                                        {lead.assignedTo && (
+                                            <div className="flex items-center gap-1.5 mt-1">
+                                                <span className="text-[10px] text-slate-400">Assigned:</span>
+                                                <Avatar
+                                                    src={lead.assignedTo.image ?? undefined}
+                                                    fallback={lead.assignedTo.name?.[0] || "U"}
+                                                    className="h-5 w-5"
+                                                />
+                                            </div>
+                                        )}
                                         {lead.photoUrl && (
-                                            <div className="mt-1 w-16 h-12 rounded overflow-hidden border shadow-sm">
+                                            <div className="mt-1 w-12 h-9 md:w-16 md:h-12 rounded overflow-hidden border shadow-sm shrink-0">
                                                 {/* eslint-disable-next-line @next/next/no-img-element */}
                                                 <img
                                                     src={lead.photoUrl}
@@ -308,7 +437,7 @@ export function LeadList({ initialLeads = [] }: LeadListProps) {
                                             </div>
                                         )}
                                         {lead.estimatedValue && (
-                                            <span className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+                                            <span className="text-xs md:text-sm font-semibold text-slate-900 dark:text-slate-100 mt-auto">
                                                 ${lead.estimatedValue.toLocaleString()}
                                             </span>
                                         )}

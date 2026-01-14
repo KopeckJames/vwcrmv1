@@ -5,6 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Plus, Globe, Phone, Users, DollarSign } from "lucide-react";
 import prisma from "@/lib/prisma";
+import { auth } from "@/lib/auth";
 
 type AccountWithCount = {
     id: string;
@@ -15,9 +16,17 @@ type AccountWithCount = {
     _count: { contacts: number; opportunities: number };
 };
 
-async function getAccounts(): Promise<AccountWithCount[]> {
+async function getAccounts(session: any): Promise<AccountWithCount[]> {
+    if (!session?.user) return [];
+
     try {
+        const where: any = {};
+        if (session.user.role !== "admin") {
+            where.assignedToId = session.user.id;
+        }
+
         const accounts = await prisma.cRMAccount.findMany({
+            where,
             select: {
                 id: true,
                 name: true,
@@ -38,7 +47,8 @@ async function getAccounts(): Promise<AccountWithCount[]> {
 }
 
 export default async function AccountsPage() {
-    const accounts = await getAccounts();
+    const session = await auth();
+    const accounts = await getAccounts(session);
 
     return (
         <div className="flex flex-col min-h-screen">

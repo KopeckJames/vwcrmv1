@@ -3,7 +3,7 @@
 import { Bell, Search, Plus, Menu } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { useState } from "react";
+import { useDashboard } from "./dashboard-context";
 
 interface HeaderProps {
     title: string;
@@ -11,13 +11,21 @@ interface HeaderProps {
 }
 
 export function Header({ title, onMobileMenuToggle }: HeaderProps) {
-    const [searchOpen, setSearchOpen] = useState(false);
+    const { toggleSidebar } = useDashboard();
+
+    const handleToggle = () => {
+        if (onMobileMenuToggle) {
+            onMobileMenuToggle();
+        } else {
+            toggleSidebar();
+        }
+    };
 
     return (
-        <header className="sticky top-0 z-40 flex h-16 items-center gap-4 border-b border-slate-200 bg-white/80 backdrop-blur-sm px-6 dark:border-slate-800 dark:bg-slate-950/80">
+        <header className="sticky top-0 z-40 flex h-16 items-center gap-4 border-b border-slate-200 bg-white/80 backdrop-blur-sm px-4 md:px-6 dark:border-slate-800 dark:bg-slate-950/80">
             {/* Mobile menu button */}
             <button
-                onClick={onMobileMenuToggle}
+                onClick={handleToggle}
                 className="lg:hidden p-2 -ml-2 text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100"
             >
                 <Menu className="h-5 w-5" />

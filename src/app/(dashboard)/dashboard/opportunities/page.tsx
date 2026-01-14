@@ -5,6 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Plus, Building2, Calendar, DollarSign } from "lucide-react";
 import prisma from "@/lib/prisma";
+import { auth } from "@/lib/auth";
 import { formatDate, formatCurrency } from "@/lib/utils";
 
 type OpportunityItem = {
@@ -37,9 +38,17 @@ const stageColors: Record<string, "default" | "info" | "warning" | "success" | "
     CLOSED_LOST: "danger",
 };
 
-async function getOpportunities(): Promise<OpportunityItem[]> {
+async function getOpportunities(session: any): Promise<OpportunityItem[]> {
+    if (!session?.user) return [];
+
     try {
+        const where: any = {};
+        if (session.user.role !== "admin") {
+            where.assignedToId = session.user.id;
+        }
+
         const opportunities = await prisma.opportunity.findMany({
+            where,
             select: {
                 id: true,
                 name: true,
@@ -59,7 +68,8 @@ async function getOpportunities(): Promise<OpportunityItem[]> {
 }
 
 export default async function OpportunitiesPage() {
-    const opportunities = await getOpportunities();
+    const session = await auth();
+    const opportunities = await getOpportunities(session);
 
     return (
         <div className="flex flex-col min-h-screen">

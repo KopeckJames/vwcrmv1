@@ -11,6 +11,7 @@ export async function GET() {
 
     try {
         const accounts = await prisma.cRMAccount.findMany({
+            where: { assignedToId: session.user.id },
             include: {
                 _count: {
                     select: {
@@ -66,8 +67,8 @@ export async function POST(request: NextRequest) {
                 shippingState: data.shippingState || null,
                 shippingZipCode: data.shippingZipCode || null,
                 shippingCountry: data.shippingCountry || null,
-                latitude: data.latitude || null,
                 longitude: data.longitude || null,
+                assignedToId: session.user.id,
             },
         });
 

@@ -11,6 +11,7 @@ export async function GET() {
 
     try {
         const contacts = await prisma.contact.findMany({
+            where: { assignedToId: session.user.id },
             include: {
                 account: {
                     select: { id: true, name: true },
@@ -62,6 +63,7 @@ export async function POST(request: NextRequest) {
                 latitude: data.latitude || null,
                 longitude: data.longitude || null,
                 accountId: data.accountId || null,
+                assignedToId: session.user.id,
             },
             include: {
                 account: {

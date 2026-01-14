@@ -132,6 +132,7 @@ export async function POST(request: NextRequest) {
                         longitude,
                         photoUrl,
                         status: outcome === "INTERESTED" ? "CONTACTED" : outcome === "APPOINTMENT_SET" ? "QUALIFIED" : "NEW",
+                        assignedToId: session.user.id,
                         lastActivityAt: new Date(),
                     },
                 });

@@ -40,8 +40,13 @@ async function getTasks(): Promise<TaskItem[]> {
     if (!session?.user) return [];
 
     try {
+        const where: any = {};
+        if (session.user.role !== "admin") {
+            where.assignedToId = session.user.id;
+        }
+
         const tasks = await prisma.task.findMany({
-            where: { assignedToId: session.user.id },
+            where,
             select: {
                 id: true,
                 title: true,

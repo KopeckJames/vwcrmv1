@@ -41,6 +41,11 @@ export async function GET(request: NextRequest) {
 
     const where: any = {};
 
+    // Only filter by assignedToId if the user is NOT an admin
+    if (session.user.role !== "admin") {
+        where.assignedToId = session.user.id;
+    }
+
     if (status) {
         where.status = status;
     }

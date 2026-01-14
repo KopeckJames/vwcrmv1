@@ -127,6 +127,7 @@ export async function POST(request: NextRequest) {
                         source: occupancyStatus ? `${occupancyStatus}-Occupied` : null,
                         description: occupancyReason || null,
                         status: "NEW" as const,
+                        assignedToId: session.user.id,
                     });
                 } catch (error) {
                     results.errors.push(`Row ${i + batch.indexOf(row) + 2}: ${error}`);

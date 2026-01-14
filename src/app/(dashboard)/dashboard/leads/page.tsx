@@ -3,11 +3,20 @@ import { Header } from "@/components/dashboard/header";
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
 import prisma from "@/lib/prisma";
+import { auth } from "@/lib/auth";
 import { LeadList } from "./lead-list";
 
-async function getLeads() {
+async function getLeads(session: any) {
+    if (!session?.user) return [];
+
     try {
+        const where: any = {};
+        if (session.user.role !== "admin") {
+            where.assignedToId = session.user.id;
+        }
+
         const leads = await prisma.lead.findMany({
+            where,
             include: {
                 assignedTo: {
                     select: { id: true, name: true, image: true },
@@ -25,7 +34,8 @@ async function getLeads() {
 }
 
 export default async function LeadsPage() {
-    const leads = await getLeads();
+    const session = await auth();
+    const leads = await getLeads(session);
 
     return (
         <div className="flex flex-col min-h-screen">

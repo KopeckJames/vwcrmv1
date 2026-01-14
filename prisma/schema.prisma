@@ -28,6 +28,8 @@ model User {
   
   // CRM relations
   assignedLeads       Lead[]        @relation("AssignedLeads")
+  assignedContacts    Contact[]     @relation("AssignedContacts")
+  assignedCRMAccounts CRMAccount[]  @relation("AssignedCRMAccounts")
   assignedTasks       Task[]        @relation("AssignedTasks")
   assignedOpportunities Opportunity[] @relation("AssignedOpportunities")
   activities          Activity[]
@@ -99,6 +101,10 @@ model Contact {
   accountId   String?
   account     CRMAccount? @relation(fields: [accountId], references: [id])
   
+  // Assignment
+  assignedToId String?
+  assignedTo   User?   @relation("AssignedContacts", fields: [assignedToId], references: [id])
+  
   activities  Activity[]
   tasks       Task[]
   opportunities Opportunity[]
@@ -108,6 +114,7 @@ model Contact {
   updatedAt   DateTime @updatedAt
 
   @@index([accountId])
+  @@index([assignedToId])
   @@index([email])
   @@index([latitude, longitude])
 }
@@ -145,10 +152,15 @@ model CRMAccount {
   opportunities Opportunity[]
   activities  Activity[]
   
+  // Assignment
+  assignedToId String?
+  assignedTo   User?   @relation("AssignedCRMAccounts", fields: [assignedToId], references: [id])
+  
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
   @@index([name])
+  @@index([assignedToId])
   @@index([latitude, longitude])
 }
 

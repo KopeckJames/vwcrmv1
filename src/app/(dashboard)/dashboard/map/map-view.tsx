@@ -222,12 +222,12 @@ export function MapView({ data }: MapViewProps) {
     };
 
     return (
-        <div className="space-y-4">
+        <div className="space-y-4 flex flex-col h-[calc(100vh-8rem)]">
             {/* Filter Controls */}
-            <Card>
-                <CardContent className="py-4">
-                    <div className="flex flex-wrap items-center gap-3">
-                        <span className="text-sm font-medium text-slate-500 dark:text-slate-400">
+            <Card className="shrink-0">
+                <CardContent className="py-3 px-3 md:py-4 md:px-6">
+                    <div className="flex items-center gap-3 overflow-x-auto no-scrollbar scroll-smooth">
+                        <span className="hidden sm:inline text-sm font-medium text-slate-500 dark:text-slate-400 whitespace-nowrap">
                             Show on map:
                         </span>
                         <FilterButton
@@ -267,15 +267,17 @@ export function MapView({ data }: MapViewProps) {
             </Card>
 
             {/* Map */}
-            <CRMMap
-                markers={markers}
-                onMarkerClick={handleMarkerClick}
-                className="w-full h-[calc(100vh-280px)] min-h-[400px]"
-            />
+            <div className="flex-1 min-h-[400px] relative rounded-xl overflow-hidden shadow-inner border border-slate-200 dark:border-slate-800">
+                <CRMMap
+                    markers={markers}
+                    onMarkerClick={handleMarkerClick}
+                    className="w-full h-full"
+                />
+            </div>
 
             {/* Lead Edit Dialog */}
             <Dialog open={!!selectedLead} onOpenChange={(open) => !open && setSelectedLead(null)}>
-                <DialogContent className="max-w-2xl overflow-y-auto max-h-[90vh]">
+                <DialogContent className="max-w-2xl overflow-y-auto max-h-[90vh] w-[95vw] sm:w-full rounded-2xl">
                     <DialogHeader>
                         <DialogTitle>Edit Lead</DialogTitle>
                         <DialogDescription>

@@ -5,6 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Avatar } from "@/components/ui/avatar";
 import { Plus, Mail, Phone, Building2, MapPin } from "lucide-react";
 import prisma from "@/lib/prisma";
+import { auth } from "@/lib/auth";
 
 type ContactWithAccount = {
     id: string;
@@ -18,9 +19,17 @@ type ContactWithAccount = {
     account: { id: string; name: string } | null;
 };
 
-async function getContacts(): Promise<ContactWithAccount[]> {
+async function getContacts(session: any): Promise<ContactWithAccount[]> {
+    if (!session?.user) return [];
+
     try {
+        const where: any = {};
+        if (session.user.role !== "admin") {
+            where.assignedToId = session.user.id;
+        }
+
         const contacts = await prisma.contact.findMany({
+            where,
             select: {
                 id: true,
                 firstName: true,
@@ -44,7 +53,8 @@ async function getContacts(): Promise<ContactWithAccount[]> {
 }
 
 export default async function ContactsPage() {
-    const contacts = await getContacts();
+    const session = await auth();
+    const contacts = await getContacts(session);
 
     return (
         <div className="flex flex-col min-h-screen">

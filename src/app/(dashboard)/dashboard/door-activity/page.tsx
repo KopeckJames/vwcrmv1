@@ -24,8 +24,13 @@ async function getDoorActivities() {
     if (!session?.user) return [];
 
     try {
+        const where: any = {};
+        if (session.user.role !== "admin") {
+            where.userId = session.user.id;
+        }
+
         return await prisma.doorActivity.findMany({
-            where: { userId: session.user.id },
+            where,
             include: {
                 lead: {
                     select: { id: true, firstName: true, lastName: true },

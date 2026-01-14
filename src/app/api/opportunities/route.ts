@@ -11,6 +11,7 @@ export async function GET() {
 
     try {
         const opportunities = await prisma.opportunity.findMany({
+            where: { assignedToId: session.user.id },
             include: {
                 account: { select: { id: true, name: true } },
                 contact: { select: { id: true, firstName: true, lastName: true } },

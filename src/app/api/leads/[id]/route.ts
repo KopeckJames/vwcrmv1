@@ -40,8 +40,13 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 
     const { id } = await params;
 
-    const lead = await prisma.lead.findUnique({
-        where: { id },
+    const where: any = { id };
+    if (session.user.role !== "admin") {
+        where.assignedToId = session.user.id;
+    }
+
+    const lead = await prisma.lead.findFirst({
+        where,
         include: {
             assignedTo: {
                 select: { id: true, name: true, email: true, image: true },
@@ -83,8 +88,13 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
         const body = await request.json();
         const validated = leadUpdateSchema.parse(body);
 
+        const where: any = { id };
+        if (session.user.role !== "admin") {
+            where.assignedToId = session.user.id;
+        }
+
         const lead = await prisma.lead.update({
-            where: { id },
+            where,
             data: validated,
             include: {
                 assignedTo: {
@@ -113,8 +123,13 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
     const { id } = await params;
 
     try {
+        const where: any = { id };
+        if (session.user.role !== "admin") {
+            where.assignedToId = session.user.id;
+        }
+
         await prisma.lead.delete({
-            where: { id },
+            where,
         });
 
         return NextResponse.json({ success: true });
