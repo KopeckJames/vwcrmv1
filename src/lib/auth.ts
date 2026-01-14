@@ -40,7 +40,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     },
     events: {
         async createUser({ user }) {
-            if (user.email === "Admin@velvetwatertx.com") {
+            if (user.email?.toLowerCase() === "admin@velvetwatertx.com") {
                 await prisma.user.update({
                     where: { id: user.id },
                     data: { role: "admin" },
