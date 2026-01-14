@@ -28,18 +28,29 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: "Target user not found" }, { status: 404 });
         }
 
-        const result = await prisma.lead.updateMany({
-            where: {
-                id: { in: leadIds },
-            },
-            data: {
-                assignedToId,
-            },
+        const leadsToUpdate = await prisma.lead.findMany({
+            where: { id: { in: leadIds } },
+            include: { assignedTo: true },
         });
 
+        const updates = leadsToUpdate.map(lead => {
+            const data: any = { assignedToId };
+            // If currently assigned to an admin and has no overseeing admin,
+            // set the overseeing admin to the current admin.
+            if (lead.assignedTo?.role === "admin" && !lead.assignedAdminId) {
+                data.assignedAdminId = lead.assignedToId;
+            }
+            return prisma.lead.update({
+                where: { id: lead.id },
+                data,
+            });
+        });
+
+        await Promise.all(updates);
+
         return NextResponse.json({
-            message: `Successfully reassigned ${result.count} leads`,
-            count: result.count,
+            message: `Successfully reassigned ${leadsToUpdate.length} leads`,
+            count: leadsToUpdate.length,
         });
     } catch (error) {
         if (error instanceof z.ZodError) {

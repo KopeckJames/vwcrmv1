@@ -44,6 +44,13 @@ interface Lead {
     assignedTo?: {
         id: string;
         name: string | null;
+        image?: string | null;
+    } | null;
+    assignedAdminId?: string | null;
+    assignedAdmin?: {
+        id: string;
+        name: string | null;
+        image?: string | null;
     } | null;
 }
 

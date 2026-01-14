@@ -101,9 +101,13 @@ export async function POST(request: NextRequest) {
             data: {
                 ...validated,
                 assignedToId: session.user.id,
+                assignedAdminId: session.user.role === "admin" ? session.user.id : null,
             },
             include: {
                 assignedTo: {
+                    select: { id: true, name: true, image: true },
+                },
+                assignedAdmin: {
                     select: { id: true, name: true, image: true },
                 },
             },

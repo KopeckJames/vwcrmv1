@@ -40,6 +40,14 @@ async function getMapData() {
                         select: {
                             id: true,
                             name: true,
+                            image: true,
+                        },
+                    },
+                    assignedAdmin: {
+                        select: {
+                            id: true,
+                            name: true,
+                            image: true,
                         },
                     },
                 },

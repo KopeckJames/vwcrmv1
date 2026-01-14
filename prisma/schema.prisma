@@ -32,6 +32,7 @@ model User {
   assignedCRMAccounts CRMAccount[]  @relation("AssignedCRMAccounts")
   assignedTasks       Task[]        @relation("AssignedTasks")
   assignedOpportunities Opportunity[] @relation("AssignedOpportunities")
+  administeredLeads   Lead[]        @relation("AdministeredLeads")
   activities          Activity[]
   doorActivities      DoorActivity[]
 }
@@ -196,9 +197,11 @@ model Lead {
   territoryId String?
   territory   Territory? @relation(fields: [territoryId], references: [id])
   
-  // Assignment
   assignedToId String?
   assignedTo   User?   @relation("AssignedLeads", fields: [assignedToId], references: [id])
+  
+  assignedAdminId String?
+  assignedAdmin   User?   @relation("AdministeredLeads", fields: [assignedAdminId], references: [id])
   
   // Relations
   activities   Activity[]

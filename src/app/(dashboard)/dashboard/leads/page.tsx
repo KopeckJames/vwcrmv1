@@ -21,6 +21,9 @@ async function getLeads(session: any) {
                 assignedTo: {
                     select: { id: true, name: true, image: true },
                 },
+                assignedAdmin: {
+                    select: { id: true, name: true, image: true },
+                },
             },
             orderBy: { createdAt: "desc" },
             take: 100,

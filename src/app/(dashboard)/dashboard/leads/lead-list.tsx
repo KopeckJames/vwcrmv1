@@ -63,6 +63,14 @@ interface Lead {
         id: string;
         name?: string | null;
         image?: string | null;
+        role?: string | null;
+    } | null;
+    assignedAdminId?: string | null;
+    assignedAdmin?: {
+        id: string;
+        name?: string | null;
+        image?: string | null;
+        role?: string | null;
     } | null;
 }
 
@@ -638,10 +646,20 @@ export function LeadList({ initialLeads = [] }: LeadListProps) {
                                         </Badge>
                                         {lead.assignedTo && (
                                             <div className="flex items-center gap-1.5 mt-1">
-                                                <span className="text-[10px] text-slate-400">Assigned:</span>
+                                                <span className="text-[10px] text-slate-400">Rep:</span>
                                                 <Avatar
                                                     src={lead.assignedTo.image ?? undefined}
                                                     fallback={lead.assignedTo.name?.[0] || "U"}
+                                                    className="h-5 w-5"
+                                                />
+                                            </div>
+                                        )}
+                                        {lead.assignedAdmin && (
+                                            <div className="flex items-center gap-1.5 mt-1">
+                                                <span className="text-[10px] text-slate-400">Admin:</span>
+                                                <Avatar
+                                                    src={lead.assignedAdmin.image ?? undefined}
+                                                    fallback={lead.assignedAdmin.name?.[0] || "A"}
                                                     className="h-5 w-5"
                                                 />
                                             </div>

@@ -55,6 +55,9 @@ export default async function LeadDetailPage({ params }: PageProps) {
             assignedTo: {
                 select: { id: true, name: true, email: true, image: true },
             },
+            assignedAdmin: {
+                select: { id: true, name: true, email: true, image: true },
+            },
             territory: true,
             activities: {
                 orderBy: { dateTime: "desc" },
@@ -178,22 +181,43 @@ export default async function LeadDetailPage({ params }: PageProps) {
                         <CardHeader>
                             <CardTitle>Assignment</CardTitle>
                         </CardHeader>
-                        <CardContent className="space-y-4">
-                            <div className="flex items-center gap-3">
-                                <Avatar
-                                    src={lead.assignedTo?.image}
-                                    fallback={lead.assignedTo?.name || undefined}
-                                    className="h-10 w-10"
-                                />
-                                <div>
-                                    <p className="text-sm font-medium">{lead.assignedTo?.name || 'Unassigned'}</p>
-                                    <p className="text-xs text-slate-500">{lead.assignedTo?.email}</p>
+                        <CardContent className="space-y-6">
+                            <div className="space-y-3">
+                                <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">Assigned Representative</p>
+                                <div className="flex items-center gap-3">
+                                    <Avatar
+                                        src={lead.assignedTo?.image}
+                                        fallback={lead.assignedTo?.name || undefined}
+                                        className="h-10 w-10 border-2 border-blue-100 dark:border-blue-900"
+                                    />
+                                    <div>
+                                        <p className="text-sm font-semibold">{lead.assignedTo?.name || 'Unassigned'}</p>
+                                        <p className="text-xs text-slate-500">{lead.assignedTo?.email}</p>
+                                    </div>
                                 </div>
                             </div>
+
+                            {lead.assignedAdmin && (
+                                <div className="pt-4 border-t space-y-3">
+                                    <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">Overseeing Administrator</p>
+                                    <div className="flex items-center gap-3">
+                                        <Avatar
+                                            src={lead.assignedAdmin.image}
+                                            fallback={lead.assignedAdmin.name || undefined}
+                                            className="h-10 w-10 border-2 border-green-100 dark:border-green-900"
+                                        />
+                                        <div>
+                                            <p className="text-sm font-semibold">{lead.assignedAdmin.name}</p>
+                                            <p className="text-xs text-slate-500">{lead.assignedAdmin.email}</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
                             {lead.territory && (
-                                <div className="pt-2 border-t">
-                                    <p className="text-xs font-medium text-slate-500 uppercase">Territory</p>
-                                    <p className="text-sm font-semibold">{lead.territory.name}</p>
+                                <div className="pt-4 border-t">
+                                    <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">Territory</p>
+                                    <p className="text-sm font-semibold mt-1">{lead.territory.name}</p>
                                 </div>
                             )}
                         </CardContent>

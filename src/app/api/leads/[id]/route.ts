@@ -24,6 +24,7 @@ const leadUpdateSchema = z.object({
     latitude: z.number().optional().nullable(),
     longitude: z.number().optional().nullable(),
     assignedToId: z.string().optional().nullable(),
+    assignedAdminId: z.string().optional().nullable(),
     territoryId: z.string().optional().nullable(),
 });
 
@@ -49,7 +50,10 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
         where,
         include: {
             assignedTo: {
-                select: { id: true, name: true, email: true, image: true },
+                select: { id: true, name: true, email: true, image: true, role: true },
+            },
+            assignedAdmin: {
+                select: { id: true, name: true, email: true, image: true, role: true },
             },
             territory: true,
             activities: {
@@ -93,12 +97,35 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
             where.assignedToId = session.user.id;
         }
 
+        const currentLead = await prisma.lead.findUnique({
+            where: { id },
+            include: { assignedTo: true }
+        });
+
+        if (!currentLead) {
+            return NextResponse.json({ error: "Lead not found" }, { status: 404 });
+        }
+
+        const updateData: any = { ...validated };
+
+        // Logic to retain admin assignment
+        // If reassigning AWAY from an admin, and the lead doesn't have an overseeing admin yet,
+        // make that admin the overseeing admin.
+        if (validated.assignedToId && validated.assignedToId !== currentLead.assignedToId) {
+            if (currentLead.assignedTo?.role === "admin" && !currentLead.assignedAdminId) {
+                updateData.assignedAdminId = currentLead.assignedToId;
+            }
+        }
+
         const lead = await prisma.lead.update({
-            where,
-            data: validated,
+            where: { id },
+            data: updateData,
             include: {
                 assignedTo: {
-                    select: { id: true, name: true, image: true },
+                    select: { id: true, name: true, image: true, role: true },
+                },
+                assignedAdmin: {
+                    select: { id: true, name: true, image: true, role: true },
                 },
             },
         });
