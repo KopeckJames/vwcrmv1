@@ -17,7 +17,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
 
             // For extra safety or if users are already in DB with 'user' role, 
             // ensure the admin email gets the admin role in the session
-            if (session.user?.email === "Admin@velvetwatertx.com") {
+            if (session.user?.email?.toLowerCase() === "admin@velvetwatertx.com") {
                 session.user.role = "admin";
             }
 

@@ -140,9 +140,7 @@ export function LeadList({ initialLeads = [] }: LeadListProps) {
         setSelectedLead(lead);
         setTargetUserId(lead.assignedToId || "");
         setIsReassignOpen(true);
-        if (users.length === 0) {
-            fetchUsers();
-        }
+        fetchUsers();
     };
 
     const handleQuickAdd = async (e: React.FormEvent) => {
