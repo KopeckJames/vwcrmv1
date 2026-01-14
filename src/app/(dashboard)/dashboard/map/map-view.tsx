@@ -491,23 +491,33 @@ export function MapView({ data, user }: MapViewProps) {
 
             {/* Legend */}
             <Card>
-                <CardContent className="py-3">
-                    <div className="flex flex-wrap items-center gap-4 text-sm">
-                        <span className="font-medium text-slate-500 dark:text-slate-400">
-                            {isAdmin ? "Users:" : "Lead Status:"}
-                        </span>
-                        {isAdmin ? (
-                            legendUsers.map(u => (
-                                <LegendItem key={u.id} color={u.color} label={u.name} />
-                            ))
-                        ) : (
-                            <>
+                <CardContent className="py-2 px-4">
+                    <div className="flex flex-col gap-3">
+                        <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm">
+                            <span className="font-semibold text-slate-700 dark:text-slate-300 min-w-[100px]">
+                                Lead Status:
+                            </span>
+                            <div className="flex flex-wrap items-center gap-4 text-slate-600 dark:text-slate-400">
                                 <LegendItem color="#3b82f6" label="New" />
                                 <LegendItem color="#8b5cf6" label="Contacted" />
                                 <LegendItem color="#10b981" label="Qualified" />
                                 <LegendItem color="#f59e0b" label="Unqualified" />
                                 <LegendItem color="#ef4444" label="Dead" />
-                            </>
+                                {isAdmin && <span className="text-xs italic ml-2">(Unassigned leads use status colors)</span>}
+                            </div>
+                        </div>
+
+                        {isAdmin && legendUsers.length > 0 && (
+                            <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm pt-2 border-t border-slate-100 dark:border-slate-800">
+                                <span className="font-semibold text-slate-700 dark:text-slate-300 min-w-[100px]">
+                                    Assigned To:
+                                </span>
+                                <div className="flex flex-wrap items-center gap-4">
+                                    {legendUsers.map(u => (
+                                        <LegendItem key={u.id} color={u.color} label={u.name} />
+                                    ))}
+                                </div>
+                            </div>
                         )}
                     </div>
                 </CardContent>
