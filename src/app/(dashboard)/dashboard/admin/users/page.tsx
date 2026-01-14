@@ -30,7 +30,12 @@ export default async function AdminUsersPage() {
         <div className="space-y-6">
             <div className="flex items-center justify-between">
                 <div>
-                    <h1 className="text-3xl font-bold tracking-tight">Users</h1>
+                    <div className="flex items-center gap-3">
+                        <h1 className="text-3xl font-bold tracking-tight">Users</h1>
+                        <Badge variant="secondary" className="px-2 py-0.5">
+                            {users.length} Total
+                        </Badge>
+                    </div>
                     <p className="text-slate-500">
                         Manage all registered users in the CRM.
                     </p>
