@@ -16,8 +16,9 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             }
 
             // For extra safety or if users are already in DB with 'user' role, 
-            // ensure the admin email gets the admin role in the session
-            if (session.user?.email?.toLowerCase() === "admin@velvetwatertx.com") {
+            // ensure the admin emails get the admin role in the session
+            const adminEmails = ["admin@velvetwatertx.com", "james@velvetwatertx.com"];
+            if (session.user?.email?.toLowerCase() && adminEmails.includes(session.user.email.toLowerCase())) {
                 session.user.role = "admin";
             }
 
@@ -40,7 +41,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     },
     events: {
         async createUser({ user }) {
-            if (user.email?.toLowerCase() === "admin@velvetwatertx.com") {
+            const adminEmails = ["admin@velvetwatertx.com", "james@velvetwatertx.com"];
+            if (user.email?.toLowerCase() && adminEmails.includes(user.email.toLowerCase())) {
                 await prisma.user.update({
                     where: { id: user.id },
                     data: { role: "admin" },
